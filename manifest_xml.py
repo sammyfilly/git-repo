@@ -89,8 +89,7 @@ def XmlBool(node, attr, default=None):
         return False
     else:
         print(
-            'warning: manifest: %s="%s": ignoring invalid XML boolean'
-            % (attr, value),
+            f'warning: manifest: {attr}="{value}": ignoring invalid XML boolean',
             file=sys.stderr,
         )
         return default
@@ -117,9 +116,7 @@ def XmlInt(node, attr, default=None):
     try:
         return int(value)
     except ValueError:
-        raise ManifestParseError(
-            'manifest: invalid %s="%s" integer' % (attr, value)
-        )
+        raise ManifestParseError(f'manifest: invalid {attr}="{value}" integer')
 
 
 class _Default(object):
@@ -140,9 +137,7 @@ class _Default(object):
         return self.__dict__ == other.__dict__
 
     def __ne__(self, other):
-        if not isinstance(other, _Default):
-            return True
-        return self.__dict__ != other.__dict__
+        return self.__dict__ != other.__dict__ if isinstance(other, _Default) else True
 
 
 class _XmlRemote(object):
@@ -194,7 +189,7 @@ class _XmlRemote(object):
         # and then replacing it with the original when we are done.
 
         if manifestUrl.find(":") != manifestUrl.find("/") - 1:
-            url = urllib.parse.urljoin("gopher://" + manifestUrl, url)
+            url = urllib.parse.urljoin(f"gopher://{manifestUrl}", url)
             url = re.sub(r"^gopher://", "", url)
         else:
             url = urllib.parse.urljoin(manifestUrl, url)
@@ -202,10 +197,8 @@ class _XmlRemote(object):
 
     def ToRemoteSpec(self, projectName):
         fetchUrl = self.resolvedFetchUrl.rstrip("/")
-        url = fetchUrl + "/" + projectName
-        remoteName = self.name
-        if self.remoteAlias:
-            remoteName = self.remoteAlias
+        url = f"{fetchUrl}/{projectName}"
+        remoteName = self.remoteAlias if self.remoteAlias else self.name
         return RemoteSpec(
             remoteName,
             url=url,
@@ -332,9 +325,7 @@ class _XmlSubmanifest:
 
     def GetGroupsStr(self):
         """Returns the `groups` given for this submanifest."""
-        if self.groups:
-            return ",".join(self.groups)
-        return ""
+        return ",".join(self.groups) if self.groups else ""
 
     def GetDefaultGroupsStr(self):
         """Returns the `default-groups` given for this submanifest."""
@@ -454,7 +445,7 @@ class XmlManifest(object):
         if path is None:
             path = os.path.join(self.manifestProject.worktree, name)
             if not os.path.isfile(path):
-                raise ManifestParseError("manifest %s not found" % name)
+                raise ManifestParseError(f"manifest {name} not found")
 
         self._load_local_manifests = load_local_manifests
         self._outer_client.manifestFileOverrides[self.path_prefix] = path
@@ -657,9 +648,9 @@ https://gerrit.googlesource.com/git-repo/+/HEAD/docs/manifest-format.md
                 e.setAttribute("remote", remoteName)
             if peg_rev:
                 if self.IsMirror:
-                    value = p.bare_git.rev_parse(p.revisionExpr + "^0")
+                    value = p.bare_git.rev_parse(f"{p.revisionExpr}^0")
                 else:
-                    value = p.work_git.rev_parse(HEAD + "^0")
+                    value = p.work_git.rev_parse(f"{HEAD}^0")
                 e.setAttribute("revision", value)
                 if peg_rev_upstream:
                     if p.upstream:
@@ -703,7 +694,7 @@ https://gerrit.googlesource.com/git-repo/+/HEAD/docs/manifest-format.md
                 le.setAttribute("dest", lf.dest)
                 e.appendChild(le)
 
-            default_groups = ["all", "name:%s" % p.name, "path:%s" % p.relpath]
+            default_groups = ["all", f"name:{p.name}", f"path:{p.relpath}"]
             egroups = [g for g in p.groups if g not in default_groups]
             if egroups:
                 e.setAttribute("groups", ",".join(egroups))
@@ -730,10 +721,10 @@ https://gerrit.googlesource.com/git-repo/+/HEAD/docs/manifest-format.md
             self._output_manifest_project_extras(p, e)
 
             if p.subprojects:
-                subprojects = set(subp.name for subp in p.subprojects)
+                subprojects = {subp.name for subp in p.subprojects}
                 output_projects(p, e, list(sorted(subprojects)))
 
-        projects = set(p.name for p in self._paths.values() if not p.parent)
+        projects = {p.name for p in self._paths.values() if not p.parent}
         output_projects(None, root, list(sorted(projects)))
 
         if self._repo_hooks_project:
@@ -803,18 +794,16 @@ https://gerrit.googlesource.com/git-repo/+/HEAD/docs/manifest-format.md
             for child in node.childNodes:
                 if child.nodeType == xml.dom.Node.ELEMENT_NODE:
                     attrs = child.attributes
-                    element = dict(
-                        (attrs.item(i).localName, attrs.item(i).value)
+                    element = {
+                        attrs.item(i).localName: attrs.item(i).value
                         for i in range(attrs.length)
-                    )
+                    }
                     if child.nodeName in SINGLE_ELEMENTS:
                         ret[child.nodeName] = element
                     elif child.nodeName in MULTI_ELEMENTS:
                         ret.setdefault(child.nodeName, []).append(element)
                     else:
-                        raise ManifestParseError(
-                            'Unhandled element "%s"' % (child.nodeName,)
-                        )
+                        raise ManifestParseError(f'Unhandled element "{child.nodeName}"')
 
                     append_children(element, child)
 
@@ -860,8 +849,7 @@ https://gerrit.googlesource.com/git-repo/+/HEAD/docs/manifest-format.md
         self._Load()
         outer = self._outer_client
         yield outer
-        for tree in outer.all_children:
-            yield tree
+        yield from outer.all_children
 
     @property
     def all_children(self):
@@ -870,8 +858,7 @@ https://gerrit.googlesource.com/git-repo/+/HEAD/docs/manifest-format.md
         for child in self._submanifests.values():
             if child.repo_client:
                 yield child.repo_client
-                for tree in child.repo_client.all_children:
-                    yield tree
+                yield from child.repo_client.all_children
 
     @property
     def path_prefix(self):
@@ -893,9 +880,7 @@ https://gerrit.googlesource.com/git-repo/+/HEAD/docs/manifest-format.md
         ret = {}
         for tree in self.all_manifests:
             prefix = tree.path_prefix
-            ret.update(
-                {os.path.join(prefix, k): v for k, v in tree.paths.items()}
-            )
+            ret |= {os.path.join(prefix, k): v for k, v in tree.paths.items()}
         return ret
 
     @property
@@ -971,7 +956,7 @@ https://gerrit.googlesource.com/git-repo/+/HEAD/docs/manifest-format.md
     def CloneBundle(self):
         clone_bundle = self.manifestProject.clone_bundle
         if clone_bundle is None:
-            return False if self.manifestProject.partial_clone else True
+            return not self.manifestProject.partial_clone
         else:
             return clone_bundle
 
@@ -984,7 +969,7 @@ https://gerrit.googlesource.com/git-repo/+/HEAD/docs/manifest-format.md
     @property
     def PartialCloneExclude(self):
         exclude = self.manifest.manifestProject.partial_clone_exclude or ""
-        return set(x.strip() for x in exclude.split(","))
+        return {x.strip() for x in exclude.split(",")}
 
     def SetManifestOverride(self, path):
         """Override manifestFile.  The caller must call Unload()"""
@@ -1070,13 +1055,12 @@ https://gerrit.googlesource.com/git-repo/+/HEAD/docs/manifest-format.md
     def SubmanifestProject(self, submanifest_path):
         """Return a manifestProject for a submanifest."""
         subdir = self.SubmanifestInfoDir(submanifest_path)
-        mp = ManifestProject(
+        return ManifestProject(
             self,
             "manifests",
             gitdir=os.path.join(subdir, "manifests.git"),
             worktree=os.path.join(subdir, "manifests"),
         )
-        return mp
 
     def GetDefaultGroupsStr(self, with_platform=True):
         """Returns the default group string to use.
@@ -1154,16 +1138,14 @@ https://gerrit.googlesource.com/git-repo/+/HEAD/docs/manifest-format.md
 
                 # The manifestFile was specified by the user which is why we
                 # allow include paths to point anywhere.
-                nodes = []
-                nodes.append(
+                nodes = [
                     self._ParseManifestXml(
                         self.manifestFile,
                         self.manifestProject.worktree,
                         parent_groups=parent_groups,
                         restrict_includes=False,
                     )
-                )
-
+                ]
                 if self._load_local_manifests and self.local_manifests:
                     try:
                         for local_file in sorted(
@@ -1250,29 +1232,24 @@ https://gerrit.googlesource.com/git-repo/+/HEAD/docs/manifest-format.md
         try:
             root = xml.dom.minidom.parse(path)
         except (OSError, xml.parsers.expat.ExpatError) as e:
-            raise ManifestParseError(
-                "error parsing manifest %s: %s" % (path, e)
-            )
+            raise ManifestParseError(f"error parsing manifest {path}: {e}")
 
         if not root or not root.childNodes:
-            raise ManifestParseError("no root node in %s" % (path,))
+            raise ManifestParseError(f"no root node in {path}")
 
         for manifest in root.childNodes:
             if manifest.nodeName == "manifest":
                 break
         else:
-            raise ManifestParseError("no <manifest> in %s" % (path,))
+            raise ManifestParseError(f"no <manifest> in {path}")
 
         nodes = []
         for node in manifest.childNodes:
             if node.nodeName == "include":
                 name = self._reqatt(node, "name")
                 if restrict_includes:
-                    msg = self._CheckLocalPath(name)
-                    if msg:
-                        raise ManifestInvalidPathError(
-                            '<include> invalid "name": %s: %s' % (name, msg)
-                        )
+                    if msg := self._CheckLocalPath(name):
+                        raise ManifestInvalidPathError(f'<include> invalid "name": {name}: {msg}')
                 include_groups = ""
                 if parent_groups:
                     include_groups = parent_groups
@@ -1283,15 +1260,12 @@ https://gerrit.googlesource.com/git-repo/+/HEAD/docs/manifest-format.md
                 fp = os.path.join(include_root, name)
                 if not os.path.isfile(fp):
                     raise ManifestParseError(
-                        "include [%s/]%s doesn't exist or isn't a file"
-                        % (include_root, name)
+                        f"include [{include_root}/]{name} doesn't exist or isn't a file"
                     )
                 try:
                     nodes.extend(
                         self._ParseManifestXml(fp, include_root, include_groups)
                     )
-                # should isolate this to the exact exception, but that's
-                # tricky.  actual parsing implementation may vary.
                 except (
                     KeyboardInterrupt,
                     RuntimeError,
@@ -1300,9 +1274,7 @@ https://gerrit.googlesource.com/git-repo/+/HEAD/docs/manifest-format.md
                 ):
                     raise
                 except Exception as e:
-                    raise ManifestParseError(
-                        "failed parsing included manifest %s: %s" % (name, e)
-                    )
+                    raise ManifestParseError(f"failed parsing included manifest {name}: {e}")
             else:
                 if parent_groups and node.nodeName == "project":
                     nodeGroups = parent_groups

@@ -69,10 +69,7 @@ use for this GITC client.
         manifest_file = self.manifest.manifestFile
         if opt.manifest_file:
             if not os.path.exists(opt.manifest_file):
-                print(
-                    "fatal: Specified manifest file %s does not exist."
-                    % opt.manifest_file
-                )
+                print(f"fatal: Specified manifest file {opt.manifest_file} does not exist.")
                 sys.exit(1)
             manifest_file = opt.manifest_file
 
@@ -82,6 +79,5 @@ use for this GITC client.
         manifest.Override(manifest_file)
         gitc_utils.generate_gitc_manifest(None, manifest)
         print(
-            "Please run `cd %s` to view your GITC client."
-            % os.path.join(wrapper.Wrapper().GITC_FS_ROOT_DIR, gitc_client)
+            f"Please run `cd {os.path.join(wrapper.Wrapper().GITC_FS_ROOT_DIR, gitc_client)}` to view your GITC client."
         )

@@ -71,8 +71,7 @@ If no project is specified try to use current directory as a project.
         project = None
 
         for a in args:
-            m = CHANGE_RE.match(a)
-            if m:
+            if m := CHANGE_RE.match(a):
                 if not project:
                     project = self.GetProjects(".")[0]
                     print("Defaulting to cwd project", project.name)
@@ -82,13 +81,11 @@ If no project is specified try to use current directory as a project.
                 else:
                     ps_id = 1
                     refs = "refs/changes/%2.2d/%d/" % (chg_id % 100, chg_id)
-                    output = project._LsRemote(refs + "*")
-                    if output:
+                    if output := project._LsRemote(f"{refs}*"):
                         regex = refs + r"(\d+)"
                         rcomp = re.compile(regex, re.I)
                         for line in output.splitlines():
-                            match = rcomp.search(line)
-                            if match:
+                            if match := rcomp.search(line):
                                 ps_id = max(int(match.group(1)), ps_id)
                 to_get.append((project, chg_id, ps_id))
             else:
@@ -103,8 +100,7 @@ If no project is specified try to use current directory as a project.
                         project = None
                     if project not in projects:
                         print(
-                            "error: %s matches too many projects; please "
-                            "re-run inside the project checkout." % (a,),
+                            f"error: {a} matches too many projects; please re-run inside the project checkout.",
                             file=sys.stderr,
                         )
                         for project in projects:
@@ -162,7 +158,7 @@ If no project is specified try to use current directory as a project.
                     file=sys.stderr,
                 )
                 for c in dl.commits:
-                    print("  %s" % (c), file=sys.stderr)
+                    print(f"  {c}", file=sys.stderr)
 
             if opt.cherrypick:
                 mode = "cherry-pick"
@@ -189,16 +185,14 @@ If no project is specified try to use current directory as a project.
                     project._Revert(dl.commit)
                 elif opt.ffonly:
                     project._FastForward(dl.commit, ffonly=True)
+                elif opt.branch:
+                    project.StartBranch(opt.branch, revision=dl.commit)
                 else:
-                    if opt.branch:
-                        project.StartBranch(opt.branch, revision=dl.commit)
-                    else:
-                        project._Checkout(dl.commit)
+                    project._Checkout(dl.commit)
 
             except GitError:
                 print(
-                    "[%s] Could not complete the %s of %s"
-                    % (project.name, mode, dl.commit),
+                    f"[{project.name}] Could not complete the {mode} of {dl.commit}",
                     file=sys.stderr,
                 )
                 sys.exit(1)

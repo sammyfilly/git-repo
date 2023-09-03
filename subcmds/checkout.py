@@ -65,18 +65,13 @@ The command is equivalent to:
             functools.partial(self._ExecuteOne, nb),
             all_projects,
             callback=_ProcessResults,
-            output=Progress(
-                "Checkout %s" % (nb,), len(all_projects), quiet=opt.quiet
-            ),
+            output=Progress(f"Checkout {nb}", len(all_projects), quiet=opt.quiet),
         )
 
         if err:
             for p in err:
-                print(
-                    "error: %s/: cannot checkout %s" % (p.relpath, nb),
-                    file=sys.stderr,
-                )
+                print(f"error: {p.relpath}/: cannot checkout {nb}", file=sys.stderr)
             sys.exit(1)
         elif not success:
-            print("error: no project has branch %s" % nb, file=sys.stderr)
+            print(f"error: no project has branch {nb}", file=sys.stderr)
             sys.exit(1)

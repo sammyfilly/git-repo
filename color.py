@@ -61,19 +61,12 @@ def _Color(fg=None, bg=None, attr=None):
                 code += ";"
             need_sep = True
 
-            if fg < 8:
-                code += "3%c" % (ord("0") + fg)
-            else:
-                code += "38;5;%d" % fg
-
+            code += "3%c" % (ord("0") + fg) if fg < 8 else "38;5;%d" % fg
         if bg >= 0:
             if need_sep:
                 code += ";"
 
-            if bg < 8:
-                code += "4%c" % (ord("0") + bg)
-            else:
-                code += "48;5;%d" % bg
+            code += "4%c" % (ord("0") + bg) if bg < 8 else "48;5;%d" % bg
         code += "m"
     else:
         code = ""
@@ -104,21 +97,18 @@ def SetDefaultColoring(state):
 
 class Coloring(object):
     def __init__(self, config, section_type):
-        self._section = "color.%s" % section_type
+        self._section = f"color.{section_type}"
         self._config = config
         self._out = sys.stdout
 
         on = DEFAULT
         if on is None:
             on = self._config.GetString(self._section)
-            if on is None:
-                on = self._config.GetString("color.ui")
+        if on is None:
+            on = self._config.GetString("color.ui")
 
         if on == "auto":
-            if pager.active or os.isatty(1):
-                self._on = True
-            else:
-                self._on = False
+            self._on = bool(pager.active or os.isatty(1))
         elif on in ("true", "always"):
             self._on = True
         else:
@@ -193,7 +183,7 @@ class Coloring(object):
         if not opt:
             return _Color(fg, bg, attr)
 
-        v = self._config.GetString("%s.%s" % (self._section, opt))
+        v = self._config.GetString(f"{self._section}.{opt}")
         if v is None:
             return _Color(fg, bg, attr)
 

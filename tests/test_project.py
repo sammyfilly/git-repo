@@ -143,7 +143,7 @@ class CopyLinkTestCase(unittest.TestCase):
             return
 
         if msg is None:
-            msg = ["path is missing: %s" % path]
+            msg = [f"path is missing: {path}"]
             while path != "/":
                 path = os.path.dirname(path)
                 if not path:

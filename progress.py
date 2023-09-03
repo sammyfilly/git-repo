@@ -66,11 +66,7 @@ def elapsed_str(total):
     """
     hours, mins, secs = convert_to_hms(total)
     ret = f"{int(secs):>02d}"
-    if total >= 3600:
-        # Show leading zeroes if over an hour.
-        ret = f"{mins:>02d}:{ret}"
-    else:
-        ret = f"{mins}:{ret}"
+    ret = f"{mins:>02d}:{ret}" if total >= 3600 else f"{mins}:{ret}"
     if hours:
         ret = f"{hours}:{ret}"
     return ret
@@ -127,10 +123,10 @@ class Progress(object):
         self._active += 1
         if not self._show_jobs:
             self._show_jobs = self._active > 1
-        self.update(inc=0, msg="started " + name)
+        self.update(inc=0, msg=f"started {name}")
 
     def finish(self, name):
-        self.update(msg="finished " + name)
+        self.update(msg=f"finished {name}")
         self._active -= 1
 
     def update(self, inc=1, msg=""):
@@ -142,7 +138,7 @@ class Progress(object):
 
         elapsed_sec = time.time() - self._start
         if not self._show:
-            if 0.5 <= elapsed_sec:
+            if elapsed_sec >= 0.5:
                 self._show = True
             else:
                 return
@@ -151,7 +147,6 @@ class Progress(object):
             sys.stderr.write(
                 "\r%s: %d,%s" % (self._title, self._done, CSI_ERASE_LINE_AFTER)
             )
-            sys.stderr.flush()
         else:
             p = (100 * self._done) / self._total
             if self._show_jobs:
@@ -161,10 +156,7 @@ class Progress(object):
                 )
             else:
                 jobs = ""
-            if self._show_elapsed:
-                elapsed = f" {elapsed_str(elapsed_sec)} |"
-            else:
-                elapsed = ""
+            elapsed = f" {elapsed_str(elapsed_sec)} |" if self._show_elapsed else ""
             sys.stderr.write(
                 "\r%s: %2d%% %s(%d%s/%d%s)%s %s%s%s"
                 % (
@@ -181,7 +173,8 @@ class Progress(object):
                     "\n" if self._print_newline else "",
                 )
             )
-            sys.stderr.flush()
+
+        sys.stderr.flush()
 
     def end(self):
         self._update_event.set()
@@ -194,7 +187,6 @@ class Progress(object):
                 "\r%s: %d, done in %s%s\n"
                 % (self._title, self._done, duration, CSI_ERASE_LINE_AFTER)
             )
-            sys.stderr.flush()
         else:
             p = (100 * self._done) / self._total
             sys.stderr.write(
@@ -210,4 +202,5 @@ class Progress(object):
                     CSI_ERASE_LINE_AFTER,
                 )
             )
-            sys.stderr.flush()
+
+        sys.stderr.flush()

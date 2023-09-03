@@ -191,7 +191,7 @@ class RunCommand(RepoWrapperTestCase):
         ret = self.wrapper.run_command(["echo", "hi"], capture_output=True)
         # echo command appends OS specific linesep, but on Windows + Git Bash
         # we get UNIX ending, so we allow both.
-        self.assertIn(ret.stdout, ["hi" + os.linesep, "hi\n"])
+        self.assertIn(ret.stdout, [f"hi{os.linesep}", "hi\n"])
 
     def test_check(self):
         """Check check handling."""
@@ -489,7 +489,7 @@ class GitCheckoutTestCase(RepoWrapperTestCase):
             templatedir = tempfile.mkdtemp(prefix=".test-template")
             with open(os.path.join(templatedir, "HEAD"), "w") as fp:
                 fp.write("ref: refs/heads/main\n")
-            initstr = "--template=" + templatedir
+            initstr = f"--template={templatedir}"
 
         run_git("init", initstr, cwd=remote)
         run_git("commit", "--allow-empty", "-minit", cwd=remote)
@@ -566,7 +566,7 @@ class ResolveRepoRev(GitCheckoutTestCase):
 
     def test_partial_commit(self):
         """Check specific (partial) commit argument."""
-        commit = self.REV_LIST[0][0:20]
+        commit = self.REV_LIST[0][:20]
         rrev, lrev = self.wrapper.resolve_repo_rev(self.GIT_DIR, commit)
         self.assertEqual(self.REV_LIST[0], rrev)
         self.assertEqual(self.REV_LIST[0], lrev)

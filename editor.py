@@ -36,21 +36,17 @@ class Editor(object):
 
     @classmethod
     def _SelectEditor(cls):
-        e = os.getenv("GIT_EDITOR")
-        if e:
+        if e := os.getenv("GIT_EDITOR"):
             return e
 
         if cls.globalConfig:
-            e = cls.globalConfig.GetString("core.editor")
-            if e:
+            if e := cls.globalConfig.GetString("core.editor"):
                 return e
 
-        e = os.getenv("VISUAL")
-        if e:
+        if e := os.getenv("VISUAL"):
             return e
 
-        e = os.getenv("EDITOR")
-        if e:
+        if e := os.getenv("EDITOR"):
             return e
 
         if os.getenv("TERM") == "dumb":
@@ -94,7 +90,7 @@ least one of these before using this command.""",  # noqa: E501
                 args = shlex.split(editor)
                 shell = False
             elif re.compile("^.*[$ \t'].*$").match(editor):
-                args = [editor + ' "$@"', "sh"]
+                args = [f'{editor} "$@"', "sh"]
                 shell = True
             else:
                 args = [editor]
@@ -104,9 +100,7 @@ least one of these before using this command.""",  # noqa: E501
             try:
                 rc = subprocess.Popen(args, shell=shell).wait()
             except OSError as e:
-                raise EditorError(
-                    "editor failed, %s: %s %s" % (str(e), editor, path)
-                )
+                raise EditorError(f"editor failed, {str(e)}: {editor} {path}")
             if rc != 0:
                 raise EditorError(
                     "editor failed with exit status %d: %s %s"

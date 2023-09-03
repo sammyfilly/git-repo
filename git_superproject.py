@@ -169,8 +169,7 @@ class Superproject(object):
             os.mkdir(self._superproject_path)
         if not self._quiet and not os.path.exists(self._work_git):
             print(
-                "%s: Performing initial setup for superproject; this might "
-                "take several minutes." % self._work_git
+                f"{self._work_git}: Performing initial setup for superproject; this might take several minutes."
             )
         cmd = ["init", "--bare", self._work_git_name]
         p = GitCommand(
@@ -180,8 +179,7 @@ class Superproject(object):
             capture_stdout=True,
             capture_stderr=True,
         )
-        retval = p.Wait()
-        if retval:
+        if retval := p.Wait():
             self._LogWarning(
                 "git init call failed, command: git {}, "
                 "return code: {}, stderr: {}",
@@ -219,17 +217,13 @@ class Superproject(object):
             "blob:none",
         ]
 
-        # Check if there is a local ref that we can pass to --negotiation-tip.
-        # If this is the first fetch, it does not exist yet.
-        # We use --negotiation-tip to speed up the fetch. Superproject branches
-        # do not share commits. So this lets git know it only needs to send
-        # commits reachable from the specified local refs.
-        rev_commit = GitRefs(self._work_git).get(f"refs/heads/{self.revision}")
-        if rev_commit:
+        if rev_commit := GitRefs(self._work_git).get(
+            f"refs/heads/{self.revision}"
+        ):
             cmd.extend(["--negotiation-tip", rev_commit])
 
         if self._branch:
-            cmd += [self._branch + ":" + self._branch]
+            cmd += [f"{self._branch}:{self._branch}"]
         p = GitCommand(
             None,
             cmd,
@@ -237,8 +231,7 @@ class Superproject(object):
             capture_stdout=True,
             capture_stderr=True,
         )
-        retval = p.Wait()
-        if retval:
+        if retval := p.Wait():
             self._LogWarning(
                 "git fetch call failed, command: git {}, "
                 "return code: {}, stderr: {}",
@@ -318,9 +311,7 @@ class Superproject(object):
         if not self._Fetch():
             return SyncResult(False, should_exit)
         if not self._quiet:
-            print(
-                "%s: Initial setup for superproject completed." % self._work_git
-            )
+            print(f"{self._work_git}: Initial setup for superproject completed.")
         return SyncResult(True, False)
 
     def _GetAllProjectsCommitIds(self):
@@ -496,8 +487,7 @@ def _UseSuperprojectFromConfiguration():
 
     # We don't have an unexpired choice, ask for one.
     system_cfg = RepoConfig.ForSystem()
-    system_value = system_cfg.GetBoolean("repo.superprojectChoice")
-    if system_value:
+    if system_value := system_cfg.GetBoolean("repo.superprojectChoice"):
         # The system configuration is proposing that we should enable the
         # use of superproject. Treat the user as enrolled for two weeks.
         #
@@ -550,7 +540,5 @@ def UseSuperproject(use_superproject, manifest):
         client_value = manifest.manifestProject.use_superproject
         if client_value is not None:
             return client_value
-        elif manifest.superproject:
-            return _UseSuperprojectFromConfiguration()
         else:
-            return False
+            return _UseSuperprojectFromConfiguration()

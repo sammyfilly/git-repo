@@ -89,9 +89,7 @@ class NoSuchProjectError(Exception):
         self.name = name
 
     def __str__(self):
-        if self.name is None:
-            return "in current directory"
-        return self.name
+        return "in current directory" if self.name is None else self.name
 
 
 class InvalidProjectGroupsError(Exception):
@@ -102,9 +100,7 @@ class InvalidProjectGroupsError(Exception):
         self.name = name
 
     def __str__(self):
-        if self.name is None:
-            return "in current directory"
-        return self.name
+        return "in current directory" if self.name is None else self.name
 
 
 class RepoChangedException(Exception):

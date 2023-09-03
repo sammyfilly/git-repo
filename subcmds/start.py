@@ -64,8 +64,8 @@ revision specified in the manifest.
             self.Usage()
 
         nb = args[0]
-        if not git.check_ref_format("heads/%s" % nb):
-            self.OptionParser.error("'%s' is not a valid name" % nb)
+        if not git.check_ref_format(f"heads/{nb}"):
+            self.OptionParser.error(f"'{nb}' is not a valid name")
 
     def _ExecuteOne(self, revision, nb, project):
         """Start one project."""
@@ -84,10 +84,7 @@ revision specified in the manifest.
                 nb, branch_merge=branch_merge, revision=revision
             )
         except Exception as e:
-            print(
-                "error: unable to checkout %s: %s" % (project.name, e),
-                file=sys.stderr,
-            )
+            print(f"error: unable to checkout {project.name}: {e}", file=sys.stderr)
             ret = False
         return (ret, project)
 
@@ -127,7 +124,7 @@ revision specified in the manifest.
             if not os.path.exists(os.getcwd()):
                 os.chdir(self.manifest.topdir)
 
-            pm = Progress("Syncing %s" % nb, len(all_projects), quiet=opt.quiet)
+            pm = Progress(f"Syncing {nb}", len(all_projects), quiet=opt.quiet)
             for project in all_projects:
                 gitc_project = self.gitc_manifest.paths[project.relpath]
                 # Sync projects that have not been opened.
@@ -156,9 +153,7 @@ revision specified in the manifest.
             functools.partial(self._ExecuteOne, opt.revision, nb),
             all_projects,
             callback=_ProcessResults,
-            output=Progress(
-                "Starting %s" % (nb,), len(all_projects), quiet=opt.quiet
-            ),
+            output=Progress(f"Starting {nb}", len(all_projects), quiet=opt.quiet),
         )
 
         if err:

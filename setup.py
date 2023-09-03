@@ -15,6 +15,7 @@
 
 """Python packaging for repo."""
 
+
 import os
 import setuptools
 
@@ -26,7 +27,7 @@ TOPDIR = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(TOPDIR, "README.md")) as fp:
     lines = fp.read().splitlines()[2:]
     end = lines.index("")
-    long_description = " ".join(lines[0:end])
+    long_description = " ".join(lines[:end])
 
 
 # https://packaging.python.org/tutorials/packaging-projects/

@@ -42,8 +42,7 @@ def _parse_ssh_version(ver_str=None):
     """parse a ssh version string into a tuple"""
     if ver_str is None:
         ver_str = _run_ssh_version()
-    m = re.match(r"^OpenSSH_([0-9.]+)(p[0-9]+)?\s", ver_str)
-    if m:
+    if m := re.match(r"^OpenSSH_([0-9.]+)(p[0-9]+)?\s", ver_str):
         return tuple(int(x) for x in m.group(1).split("."))
     else:
         return ()
@@ -146,8 +145,7 @@ class ProxyManager:
         self._terminate(self._clients)
         self._terminate(self._masters)
 
-        d = self.sock(create=False)
-        if d:
+        if d := self.sock(create=False):
             try:
                 platform_utils.rmdir(os.path.dirname(d))
             except OSError:
@@ -164,11 +162,7 @@ class ProxyManager:
         """
         # Check to see whether we already think that the master is running; if
         # we think it's already running, return right away.
-        if port is not None:
-            key = "%s:%s" % (host, port)
-        else:
-            key = host
-
+        key = f"{host}:{port}" if port is not None else host
         if key in self._master_keys:
             return True
 
@@ -177,7 +171,7 @@ class ProxyManager:
             return False
 
         # We will make two calls to ssh; this is the common part of both calls.
-        command_base = ["ssh", "-o", "ControlPath %s" % self.sock(), host]
+        command_base = ["ssh", "-o", f"ControlPath {self.sock()}", host]
         if port is not None:
             command_base[1:1] = ["-p", str(port)]
 
@@ -251,8 +245,7 @@ class ProxyManager:
 
     def preconnect(self, url):
         """If |uri| will create a ssh connection, setup the ssh master for it."""  # noqa: E501
-        m = URI_ALL.match(url)
-        if m:
+        if m := URI_ALL.match(url):
             scheme = m.group(1)
             host = m.group(2)
             if ":" in host:
@@ -263,8 +256,7 @@ class ProxyManager:
                 return self._open(host, port)
             return False
 
-        m = URI_SCP.match(url)
-        if m:
+        if m := URI_SCP.match(url):
             host = m.group(1)
             return self._open(host)
 
@@ -281,11 +273,8 @@ class ProxyManager:
             tmp_dir = "/tmp"
             if not os.path.exists(tmp_dir):
                 tmp_dir = tempfile.gettempdir()
-            if version() < (6, 7):
-                tokens = "%r@%h:%p"
-            else:
-                tokens = "%C"  # hash of %l%h%p%r
+            tokens = "%r@%h:%p" if version() < (6, 7) else "%C"
             self._sock_path = os.path.join(
-                tempfile.mkdtemp("", "ssh-", tmp_dir), "master-" + tokens
+                tempfile.mkdtemp("", "ssh-", tmp_dir), f"master-{tokens}"
             )
         return self._sock_path

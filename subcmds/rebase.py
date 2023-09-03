@@ -111,8 +111,7 @@ branch but need to incorporate new upstream changes "underneath" them.
             )
             if len(args) == 1:
                 print(
-                    "note: project %s is mapped to more than one path"
-                    % (args[0],),
+                    f"note: project {args[0]} is mapped to more than one path",
                     file=sys.stderr,
                 )
             return 1
@@ -120,7 +119,7 @@ branch but need to incorporate new upstream changes "underneath" them.
         # Setup the common git rebase args that we use for all projects.
         common_args = ["rebase"]
         if opt.whitespace:
-            common_args.append("--whitespace=%s" % opt.whitespace)
+            common_args.append(f"--whitespace={opt.whitespace}")
         if opt.quiet:
             common_args.append("--quiet")
         if opt.force_rebase:
@@ -146,8 +145,7 @@ branch but need to incorporate new upstream changes "underneath" them.
             if not cb:
                 if one_project:
                     print(
-                        "error: project %s has a detached HEAD"
-                        % _RelPath(project),
+                        f"error: project {_RelPath(project)} has a detached HEAD",
                         file=sys.stderr,
                     )
                     return 1
@@ -158,8 +156,7 @@ branch but need to incorporate new upstream changes "underneath" them.
             if not upbranch.LocalMerge:
                 if one_project:
                     print(
-                        "error: project %s does not track any remote branches"
-                        % _RelPath(project),
+                        f"error: project {_RelPath(project)} does not track any remote branches",
                         file=sys.stderr,
                     )
                     return 1

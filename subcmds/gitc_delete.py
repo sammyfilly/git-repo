@@ -46,7 +46,7 @@ and all locally downloaded sources.
                 % self.gitc_manifest.gitc_client_name
             )
             response = input(prompt).lower()
-            if not response == "yes":
+            if response != "yes":
                 print('Response was not "yes"\n Exiting...')
                 sys.exit(1)
         platform_utils.rmtree(self.gitc_manifest.gitc_client_dir)

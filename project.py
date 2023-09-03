@@ -72,7 +72,7 @@ _ALTERNATES = os.environ.get("REPO_USE_ALTERNATES") == "1"
 
 
 def _lwrite(path, content):
-    lock = "%s.lock" % path
+    lock = f"{path}.lock"
 
     # Maintain Unix line endings on all OS's to match git behavior.
     with open(lock, "w", newline="\n") as fd:
@@ -87,16 +87,16 @@ def _lwrite(path, content):
 
 def _error(fmt, *args):
     msg = fmt % args
-    print("error: %s" % msg, file=sys.stderr)
+    print(f"error: {msg}", file=sys.stderr)
 
 
 def _warn(fmt, *args):
     msg = fmt % args
-    print("warn: %s" % msg, file=sys.stderr)
+    print(f"warn: {msg}", file=sys.stderr)
 
 
 def not_rev(r):
-    return "^" + r
+    return f"^{r}"
 
 
 def sq(r):
@@ -196,12 +196,12 @@ class ReviewableBranch(object):
 
     @property
     def unabbrev_commits(self):
-        r = dict()
-        for commit in self.project.bare_git.rev_list(
-            not_rev(self.base), R_HEADS + self.name, "--"
-        ):
-            r[commit[0:8]] = commit
-        return r
+        return {
+            commit[:8]: commit
+            for commit in self.project.bare_git.rev_list(
+                not_rev(self.base), R_HEADS + self.name, "--"
+            )
+        }
 
     @property
     def date(self):
@@ -329,7 +329,7 @@ def _SafeExpandPath(base, subpath, skipfinal=False):
     # as some platforms (like Windows) will convert / to \ and that bypasses all
     # our constructed logic here.  Especially since manifest authors only use
     # / in their paths.
-    resep = re.compile(r"[/%s]" % re.escape(os.path.sep))
+    resep = re.compile(f"[/{re.escape(os.path.sep)}]")
     components = resep.split(subpath)
     if skipfinal:
         # Whether the caller handles the final component itself.
@@ -338,20 +338,16 @@ def _SafeExpandPath(base, subpath, skipfinal=False):
     path = base
     for part in components:
         if part in {".", ".."}:
-            raise ManifestInvalidPathError(
-                '%s: "%s" not allowed in paths' % (subpath, part)
-            )
+            raise ManifestInvalidPathError(f'{subpath}: "{part}" not allowed in paths')
 
         path = os.path.join(path, part)
         if platform_utils.islink(path):
-            raise ManifestInvalidPathError(
-                "%s: traversing symlinks not allow" % (path,)
-            )
+            raise ManifestInvalidPathError(f"{path}: traversing symlinks not allow")
 
         if os.path.exists(path):
             if not os.path.isfile(path) and not platform_utils.isdir(path):
                 raise ManifestInvalidPathError(
-                    "%s: only regular files & directories allowed" % (path,)
+                    f"{path}: only regular files & directories allowed"
                 )
 
     if skipfinal:
@@ -383,11 +379,11 @@ class _CopyFile(object):
 
         if platform_utils.isdir(src):
             raise ManifestInvalidPathError(
-                "%s: copying from directory not supported" % (self.src,)
+                f"{self.src}: copying from directory not supported"
             )
         if platform_utils.isdir(dest):
             raise ManifestInvalidPathError(
-                "%s: copying to directory not allowed" % (self.dest,)
+                f"{self.dest}: copying to directory not allowed"
             )
 
         # Copy file if it does not exist or is out of date.
@@ -691,9 +687,7 @@ class Project(object):
             # If the local checkout is in a bad state, don't barf.  Let the
             # callers process this like the head is unreadable.
             return None
-        if b.startswith(R_HEADS):
-            return b[len(R_HEADS) :]
-        return None
+        return b[len(R_HEADS) :] if b.startswith(R_HEADS) else None
 
     def IsRebaseInProgress(self):
         return (
@@ -711,9 +705,7 @@ class Project(object):
             return True
         if self.work_git.DiffZ("diff-files"):
             return True
-        if consider_untracked and self.UntrackedFiles():
-            return True
-        return False
+        return bool(consider_untracked and self.UntrackedFiles())
 
     _userident_name = None
     _userident_email = None
@@ -736,8 +728,7 @@ class Project(object):
 
     def _LoadUserIdentity(self):
         u = self.bare_git.var("GIT_COMMITTER_IDENT")
-        m = re.compile("^(.*) <([^>]*)> ").match(u)
-        if m:
+        if m := re.compile("^(.*) <([^>]*)> ").match(u):
             self._userident_name = m.group(1)
             self._userident_email = m.group(2)
         else:
@@ -775,8 +766,7 @@ class Project(object):
         for name, ref_id in all_refs.items():
             if name.startswith(R_PUB):
                 name = name[len(R_PUB) :]
-                b = heads.get(name)
-                if b:
+                if b := heads.get(name):
                     b.published = ref_id
 
         return heads
@@ -827,20 +817,17 @@ class Project(object):
             if not get_all:
                 return details
 
-        changes = self.work_git.DiffZ("diff-index", "--cached", HEAD).keys()
-        if changes:
+        if changes := self.work_git.DiffZ("diff-index", "--cached", HEAD).keys():
             details.extend(changes)
             if not get_all:
                 return details
 
-        changes = self.work_git.DiffZ("diff-files").keys()
-        if changes:
+        if changes := self.work_git.DiffZ("diff-files").keys():
             details.extend(changes)
             if not get_all:
                 return details
 
-        changes = self.UntrackedFiles()
-        if changes:
+        if changes := self.UntrackedFiles():
             details.extend(changes)
 
         return details
@@ -868,7 +855,7 @@ class Project(object):
             if output_redir is None:
                 output_redir = sys.stdout
             print(file=output_redir)
-            print("project %s/" % self.RelPath(local), file=output_redir)
+            print(f"project {self.RelPath(local)}/", file=output_redir)
             print('  missing (run "repo sync")', file=output_redir)
             return
 
@@ -885,7 +872,7 @@ class Project(object):
         out = StatusColoring(self.config)
         if output_redir is not None:
             out.redirect(output_redir)
-        out.project("project %-40s", self.RelPath(local) + "/ ")
+        out.project("project %-40s", f"{self.RelPath(local)}/ ")
 
         if quiet:
             out.nl()
@@ -902,7 +889,7 @@ class Project(object):
             out.important("prior sync failed; rebase still in progress")
             out.nl()
 
-        paths = list()
+        paths = []
         paths.extend(di.keys())
         paths.extend(df.keys())
         paths.extend(do)
@@ -918,16 +905,8 @@ class Project(object):
             except KeyError:
                 f = None
 
-            if i:
-                i_status = i.status.upper()
-            else:
-                i_status = "-"
-
-            if f:
-                f_status = f.status.lower()
-            else:
-                f_status = "-"
-
+            i_status = i.status.upper() if i else "-"
+            f_status = f.status.lower() if f else "-"
             if i and i.src_path:
                 line = " %s%s\t%s => %s (%s%%)" % (
                     i_status,
@@ -941,12 +920,10 @@ class Project(object):
 
             if i and not f:
                 out.added("%s", line)
-            elif (i and f) or (not i and f):
+            elif i or f:
                 out.changed("%s", line)
-            elif not i and not f:
-                out.untracked("%s", line)
             else:
-                out.write("%s", line)
+                out.untracked("%s", line)
             out.nl()
 
         return "DIRTY"
@@ -963,22 +940,26 @@ class Project(object):
             cmd.append("--color")
         cmd.append(HEAD)
         if absolute_paths:
-            cmd.append("--src-prefix=a/%s/" % self.RelPath(local))
-            cmd.append("--dst-prefix=b/%s/" % self.RelPath(local))
+            cmd.extend(
+                (
+                    f"--src-prefix=a/{self.RelPath(local)}/",
+                    f"--dst-prefix=b/{self.RelPath(local)}/",
+                )
+            )
         cmd.append("--")
         try:
             p = GitCommand(self, cmd, capture_stdout=True, capture_stderr=True)
             p.Wait()
         except GitError as e:
             out.nl()
-            out.project("project %s/" % self.RelPath(local))
+            out.project(f"project {self.RelPath(local)}/")
             out.nl()
             out.fail("%s", str(e))
             out.nl()
             return False
         if p.stdout:
             out.nl()
-            out.project("project %s/" % self.RelPath(local))
+            out.project(f"project {self.RelPath(local)}/")
             out.nl()
             out.write("%s", p.stdout)
         return p.Wait() == 0
@@ -1035,8 +1016,7 @@ class Project(object):
             if selected_branch and branch != selected_branch:
                 continue
 
-            rb = self.GetUploadableBranch(branch)
-            if rb:
+            if rb := self.GetUploadableBranch(branch):
                 ready.append(rb)
         return ready
 
@@ -1074,9 +1054,9 @@ class Project(object):
 
         branch = self.GetBranch(branch)
         if not branch.LocalMerge:
-            raise GitError("branch %s does not track a remote" % branch.name)
+            raise GitError(f"branch {branch.name} does not track a remote")
         if not branch.remote.review:
-            raise GitError("remote %s has no review url" % branch.remote.name)
+            raise GitError(f"remote {branch.remote.name} has no review url")
 
         # Basic validity check on label syntax.
         for label in labels:
@@ -1114,26 +1094,24 @@ class Project(object):
             cmd.append("--no-follow-tags")
 
         for push_option in push_options or []:
-            cmd.append("-o")
-            cmd.append(push_option)
-
+            cmd.extend(("-o", push_option))
         cmd.append(url)
 
         if dest_branch.startswith(R_HEADS):
             dest_branch = dest_branch[len(R_HEADS) :]
 
-        ref_spec = "%s:refs/for/%s" % (R_HEADS + branch.name, dest_branch)
+        ref_spec = f"{R_HEADS + branch.name}:refs/for/{dest_branch}"
         opts = []
         if auto_topic:
-            opts += ["topic=" + branch.name]
-        opts += ["t=%s" % p for p in hashtags]
+            opts += [f"topic={branch.name}"]
+        opts += [f"t={p}" for p in hashtags]
         # NB: No need to encode labels as they've been validated above.
-        opts += ["l=%s" % p for p in labels]
+        opts += [f"l={p}" for p in labels]
 
-        opts += ["r=%s" % p for p in people[0]]
-        opts += ["cc=%s" % p for p in people[1]]
+        opts += [f"r={p}" for p in people[0]]
+        opts += [f"cc={p}" for p in people[1]]
         if notify:
-            opts += ["notify=" + notify]
+            opts += [f"notify={notify}"]
         if private:
             opts += ["private"]
         if wip:
@@ -1141,14 +1119,14 @@ class Project(object):
         if ready:
             opts += ["ready"]
         if opts:
-            ref_spec = ref_spec + "%" + ",".join(opts)
+            ref_spec = f"{ref_spec}%" + ",".join(opts)
         cmd.append(ref_spec)
 
         if GitCommand(self, cmd, bare=True).Wait() != 0:
             raise UploadError("Upload failed")
 
         if not dryrun:
-            msg = "posted to %s for %s" % (branch.remote.review, dest_branch)
+            msg = f"posted to {branch.remote.review} for {dest_branch}"
             self.bare_git.UpdateRef(
                 R_PUB + branch.name, R_HEADS + branch.name, message=msg
             )

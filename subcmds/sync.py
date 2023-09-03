@@ -514,8 +514,7 @@ later is required to fix a server side protocol bug.
             return
 
         if opt.local_only and manifest.superproject:
-            manifest_path = manifest.superproject.manifest_path
-            if manifest_path:
+            if manifest_path := manifest.superproject.manifest_path:
                 self._ReloadManifest(manifest_path, manifest)
             return
 
@@ -646,18 +645,16 @@ later is required to fix a server side protocol bug.
 
             if not success:
                 print(
-                    "error: Cannot fetch %s from %s"
-                    % (project.name, project.remote.url),
+                    f"error: Cannot fetch {project.name} from {project.remote.url}",
                     file=sys.stderr,
                 )
         except KeyboardInterrupt:
             print(f"Keyboard interrupt while processing {project.name}")
         except GitError as e:
-            print("error.GitError: Cannot fetch %s" % str(e), file=sys.stderr)
+            print(f"error.GitError: Cannot fetch {str(e)}", file=sys.stderr)
         except Exception as e:
             print(
-                "error: Cannot fetch %s (%s: %s)"
-                % (project.name, type(e).__name__, str(e)),
+                f"error: Cannot fetch {project.name} ({type(e).__name__}: {str(e)})",
                 file=sys.stderr,
             )
             raise
@@ -683,7 +680,7 @@ later is required to fix a server side protocol bug.
             show_elapsed=True,
         )
 
-        objdir_project_map = dict()
+        objdir_project_map = {}
         for project in projects:
             objdir_project_map.setdefault(project.objdir, []).append(project)
         projects_list = list(objdir_project_map.values())
@@ -825,15 +822,16 @@ later is required to fix a server side protocol bug.
                 manifest=manifest,
                 all_manifests=not opt.this_manifest_only,
             )
-            missing = []
-            for project in all_projects:
-                if project.gitdir not in fetched:
-                    missing.append(project)
+            missing = [
+                project
+                for project in all_projects
+                if project.gitdir not in fetched
+            ]
             if not missing:
                 break
             # Stop us from non-stopped fetching actually-missing repos: If set
             # of missing repos has not been changed from last fetch, we break.
-            missing_set = set(p.name for p in missing)
+            missing_set = {p.name for p in missing}
             if previously_missing_set == missing_set:
                 break
             previously_missing_set = missing_set
@@ -867,20 +865,18 @@ later is required to fix a server side protocol bug.
             success = syncbuf.Finish()
         except GitError as e:
             print(
-                "error.GitError: Cannot checkout %s: %s"
-                % (project.name, str(e)),
+                f"error.GitError: Cannot checkout {project.name}: {str(e)}",
                 file=sys.stderr,
             )
         except Exception as e:
             print(
-                "error: Cannot checkout %s: %s: %s"
-                % (project.name, type(e).__name__, str(e)),
+                f"error: Cannot checkout {project.name}: {type(e).__name__}: {str(e)}",
                 file=sys.stderr,
             )
             raise
 
         if not success:
-            print("error: Cannot checkout %s" % (project.name), file=sys.stderr)
+            print(f"error: Cannot checkout {project.name}", file=sys.stderr)
         finish = time.time()
         return _CheckoutOneResult(success, project, start, finish)
 
@@ -955,25 +951,7 @@ later is required to fix a server side protocol bug.
         )
         if len(projects) == 1:
             return False
-        if len(projects) > 1:
-            # Objects are potentially shared with another project.
-            # See the logic in Project.Sync_NetworkHalf regarding UseAlternates.
-            # - When False, shared projects share (via symlink)
-            #   .repo/project-objects/{PROJECT_NAME}.git as the one-and-only
-            #   objects directory.  All objects are precious, since there is no
-            #   project with a complete set of refs.
-            # - When True, shared projects share (via info/alternates)
-            #   .repo/project-objects/{PROJECT_NAME}.git as an alternate object
-            #   store, which is written only on the first clone of the project,
-            #   and is not written subsequently. (When Sync_NetworkHalf sees
-            #   that it exists, it makes sure that the alternates file points
-            #   there, and uses a project-local .git/objects directory for all
-            #   syncs going forward.
-            # We do not support switching between the options.  The environment
-            # variable is present for testing and migration only.
-            return not project.UseAlternates
-
-        return False
+        return not project.UseAlternates if len(projects) > 1 else False
 
     def _SetPreciousObjectsState(self, project: Project, opt):
         """Correct the preciousObjects state for the project.
@@ -1075,16 +1053,15 @@ later is required to fix a server side protocol bug.
         def tidy_up(run_gc, bare_git):
             pm.start(bare_git._project.name)
             try:
-                try:
-                    if run_gc:
-                        bare_git.gc("--auto", config=config)
-                    else:
-                        bare_git.pack_refs(config=config)
-                except GitError:
-                    err_event.set()
-                except Exception:
-                    err_event.set()
-                    raise
+                if run_gc:
+                    bare_git.gc("--auto", config=config)
+                else:
+                    bare_git.pack_refs(config=config)
+            except GitError:
+                err_event.set()
+            except Exception:
+                err_event.set()
+                raise
             finally:
                 pm.finish(bare_git._project.name)
                 sem.release()
@@ -1136,12 +1113,13 @@ later is required to fix a server side protocol bug.
             0: success
             1: failure
         """
-        new_project_paths = []
-        for project in self.GetProjects(
-            None, missing_ok=True, manifest=manifest, all_manifests=False
-        ):
-            if project.relpath:
-                new_project_paths.append(project.relpath)
+        new_project_paths = [
+            project.relpath
+            for project in self.GetProjects(
+                None, missing_ok=True, manifest=manifest, all_manifests=False
+            )
+            if project.relpath
+        ]
         file_name = "project.list"
         file_path = os.path.join(manifest.subdir, file_name)
         old_project_paths = []
@@ -1212,8 +1190,7 @@ later is required to fix a server side protocol bug.
                     old_copylinkfile_paths = json.load(fp)
                 except Exception:
                     print(
-                        "error: %s is not a json formatted file."
-                        % copylinkfile_path,
+                        f"error: {copylinkfile_path} is not a json formatted file.",
                         file=sys.stderr,
                     )
                     platform_utils.remove(copylinkfile_path)
@@ -1251,7 +1228,7 @@ later is required to fix a server side protocol bug.
 
         manifest_server = manifest.manifest_server
         if not opt.quiet:
-            print("Using manifest server %s" % manifest_server)
+            print(f"Using manifest server {manifest_server}")
 
         if "@" not in manifest_server:
             username = None
@@ -1269,23 +1246,19 @@ later is required to fix a server side protocol bug.
                     try:
                         parse_result = urllib.parse.urlparse(manifest_server)
                         if parse_result.hostname:
-                            auth = info.authenticators(parse_result.hostname)
-                            if auth:
+                            if auth := info.authenticators(parse_result.hostname):
                                 username, _account, password = auth
                             else:
                                 print(
-                                    "No credentials found for %s in .netrc"
-                                    % parse_result.hostname,
+                                    f"No credentials found for {parse_result.hostname} in .netrc",
                                     file=sys.stderr,
                                 )
                     except netrc.NetrcParseError as e:
-                        print(
-                            "Error parsing .netrc file: %s" % e, file=sys.stderr
-                        )
+                        print(f"Error parsing .netrc file: {e}", file=sys.stderr)
 
             if username and password:
                 manifest_server = manifest_server.replace(
-                    "://", "://%s:%s@" % (username, password), 1
+                    "://", f"://{username}:{password}@", 1
                 )
 
         transport = PersistentTransport(manifest_server)
@@ -1306,10 +1279,7 @@ later is required to fix a server side protocol bug.
                     "TARGET_PRODUCT" in os.environ
                     and "TARGET_BUILD_VARIANT" in os.environ
                 ):
-                    target = "%s-%s" % (
-                        os.environ["TARGET_PRODUCT"],
-                        os.environ["TARGET_BUILD_VARIANT"],
-                    )
+                    target = f'{os.environ["TARGET_PRODUCT"]}-{os.environ["TARGET_BUILD_VARIANT"]}'
                     [success, manifest_str] = server.GetApprovedManifest(
                         branch, target
                     )
@@ -1334,7 +1304,7 @@ later is required to fix a server side protocol bug.
                 self._ReloadManifest(manifest_name, manifest)
             else:
                 print(
-                    "error: manifest server RPC call failed: %s" % manifest_str,
+                    f"error: manifest server RPC call failed: {manifest_str}",
                     file=sys.stderr,
                 )
                 sys.exit(1)
@@ -1502,10 +1472,7 @@ later is required to fix a server side protocol bug.
         opt.jobs_checkout = min(opt.jobs_checkout, jobs_soft_limit)
 
     def Execute(self, opt, args):
-        manifest = self.outer_manifest
-        if not opt.outer_manifest:
-            manifest = self.manifest
-
+        manifest = self.manifest if not opt.outer_manifest else self.outer_manifest
         if opt.manifest_name:
             manifest.Override(opt.manifest_name)
 
@@ -1521,23 +1488,20 @@ later is required to fix a server side protocol bug.
             manifest_name = self._SmartSyncSetup(
                 opt, smart_sync_manifest_path, manifest
             )
-        else:
-            if os.path.isfile(smart_sync_manifest_path):
-                try:
-                    platform_utils.remove(smart_sync_manifest_path)
-                except OSError as e:
-                    print(
-                        "error: failed to remove existing smart sync override "
-                        "manifest: %s" % e,
-                        file=sys.stderr,
-                    )
+        elif os.path.isfile(smart_sync_manifest_path):
+            try:
+                platform_utils.remove(smart_sync_manifest_path)
+            except OSError as e:
+                print(
+                    f"error: failed to remove existing smart sync override manifest: {e}",
+                    file=sys.stderr,
+                )
 
         err_event = multiprocessing.Event()
 
         rp = manifest.repoProject
         rp.PreSync()
-        cb = rp.CurrentBranch
-        if cb:
+        if cb := rp.CurrentBranch:
             base = rp.GetBranch(cb).merge
             if not base or not base.startswith("refs/heads/"):
                 print(
@@ -1586,10 +1550,7 @@ later is required to fix a server side protocol bug.
                 gitc_projects = None
 
             if gitc_projects != [] and not opt.local_only:
-                print(
-                    "Updating GITC client: %s"
-                    % self.gitc_manifest.gitc_client_name
-                )
+                print(f"Updating GITC client: {self.gitc_manifest.gitc_client_name}")
                 manifest = GitcManifest(
                     self.repodir, self.gitc_manifest.gitc_client_name
                 )
@@ -1775,7 +1736,12 @@ def _PostRepoFetch(rp, repo_verify=True, verbose=False):
         # See if we're held back due to missing signed tag.
         current_revid = rp.bare_git.rev_parse("HEAD")
         new_revid = rp.bare_git.rev_parse("--verify", new_rev)
-        if current_revid != new_revid:
+        if current_revid == new_revid:
+            print(
+                "warning: Skipped upgrade to unverified version",
+                file=sys.stderr,
+            )
+        else:
             # We want to switch to the new rev, but also not trash any
             # uncommitted changes.  This helps with local testing/hacking.
             # If a local change has been made, we will throw that away.
@@ -1787,17 +1753,8 @@ def _PostRepoFetch(rp, repo_verify=True, verbose=False):
                 sys.exit(str(e))
             print("info: Restarting repo with latest version", file=sys.stderr)
             raise RepoChangedException(["--repo-upgraded"])
-        else:
-            print(
-                "warning: Skipped upgrade to unverified version",
-                file=sys.stderr,
-            )
-    else:
-        if verbose:
-            print(
-                "repo version %s is current" % rp.work_git.describe(HEAD),
-                file=sys.stderr,
-            )
+    elif verbose:
+        print(f"repo version {rp.work_git.describe(HEAD)} is current", file=sys.stderr)
 
 
 class _FetchTimes(object):
@@ -1833,10 +1790,7 @@ class _FetchTimes(object):
         if self._times is None:
             return
 
-        to_delete = []
-        for name in self._times:
-            if name not in self._seen:
-                to_delete.append(name)
+        to_delete = [name for name in self._times if name not in self._seen]
         for name in to_delete:
             del self._times[name]
 
@@ -1859,9 +1813,9 @@ class PersistentTransport(xmlrpc.client.Transport):
 
     def request(self, host, handler, request_body, verbose=False):
         with GetUrlCookieFile(self.orig_host, not verbose) as (
-            cookiefile,
-            proxy,
-        ):
+                cookiefile,
+                proxy,
+            ):
             # Python doesn't understand cookies with the #HttpOnly_ prefix
             # Since we're only using them for HTTP, copy the file temporarily,
             # stripping those prefixes away.
@@ -1903,13 +1857,7 @@ class PersistentTransport(xmlrpc.client.Transport):
             if scheme == "persistent-http":
                 scheme = "http"
             if scheme == "persistent-https":
-                # If we're proxying through persistent-https, use http. The
-                # proxy itself will do the https.
-                if proxy:
-                    scheme = "http"
-                else:
-                    scheme = "https"
-
+                scheme = "http" if proxy else "https"
             # Parse out any authentication information using the base class.
             host, extra_headers, _ = self.get_host_info(parse_results.netloc)
 

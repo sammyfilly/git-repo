@@ -107,7 +107,7 @@ def main(argv):
         # shebang.
         data = (TOPDIR / "repo").read_text(encoding="utf-8")
         tempbin = tempdir / "repo"
-        tempbin.write_text(f"#!{sys.executable}\n" + data, encoding="utf-8")
+        tempbin.write_text(f"#!{sys.executable}\n{data}", encoding="utf-8")
         tempbin.chmod(0o755)
 
         # Run all cmd in parallel, and wait for them to finish.

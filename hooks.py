@@ -96,7 +96,7 @@ class RepoHook(object):
         # Store the full path to the script for convenience.
         if self._hooks_project:
             self._script_fullpath = os.path.join(
-                self._hooks_project.worktree, self._hook_type + ".py"
+                self._hooks_project.worktree, f"{self._hook_type}.py"
             )
         else:
             self._script_fullpath = None
@@ -133,10 +133,7 @@ class RepoHook(object):
 
     def _GetMustVerb(self):
         """Return 'must' if the hook is required; 'should' if not."""
-        if self._abort_if_user_denies:
-            return "must"
-        else:
-            return "should"
+        return "must" if self._abort_if_user_denies else "should"
 
     def _CheckForHookApproval(self):
         """Check to see whether this hook has been approved.
@@ -183,26 +180,24 @@ class RepoHook(object):
                 abort_if_user_denies was passed to the consturctor.
         """
         hooks_config = self._hooks_project.config
-        git_approval_key = "repo.hooks.%s.%s" % (self._hook_type, subkey)
+        git_approval_key = f"repo.hooks.{self._hook_type}.{subkey}"
 
         # Get the last value that the user approved for this hook; may be None.
         old_val = hooks_config.GetString(git_approval_key)
 
-        if old_val is not None:
-            # User previously approved hook and asked not to be prompted again.
-            if new_val == old_val:
-                # Approval matched.  We're done.
-                return True
-            else:
-                # Give the user a reason why we're prompting, since they last
-                # told us to "never ask again".
-                prompt = "WARNING: %s\n\n" % (changed_prompt,)
-        else:
+        if old_val is None:
             prompt = ""
 
+        elif new_val == old_val:
+            # Approval matched.  We're done.
+            return True
+        else:
+            # Give the user a reason why we're prompting, since they last
+            # told us to "never ask again".
+            prompt = "WARNING: %s\n\n" % (changed_prompt,)
         # Prompt the user if we're not on a tty; on a tty we'll assume "no".
         if sys.stdout.isatty():
-            prompt += main_prompt + " (yes/always/NO)? "
+            prompt += f"{main_prompt} (yes/always/NO)? "
             response = input(prompt).lower()
             print()
 
@@ -216,8 +211,7 @@ class RepoHook(object):
         # For anything else, we'll assume no approval.
         if self._abort_if_user_denies:
             raise HookError(
-                "You must allow the %s hook or use --no-verify."
-                % self._hook_type
+                f"You must allow the {self._hook_type} hook or use --no-verify."
             )
 
         return False
@@ -244,9 +238,8 @@ class RepoHook(object):
         return self._CheckForHookApprovalHelper(
             "approvedmanifest",
             self._manifest_url,
-            "Run hook scripts from %s" % (self._manifest_url,),
-            "Manifest URL has changed since %s was allowed."
-            % (self._hook_type,),
+            f"Run hook scripts from {self._manifest_url}",
+            f"Manifest URL has changed since {self._hook_type} was allowed.",
         )
 
     def _CheckForHookApprovalHash(self):
@@ -265,7 +258,7 @@ class RepoHook(object):
             "approvedhash",
             self._GetHash(),
             prompt % (self._GetMustVerb(), self._script_fullpath),
-            "Scripts have changed since %s was allowed." % (self._hook_type,),
+            f"Scripts have changed since {self._hook_type} was allowed.",
         )
 
     @staticmethod
@@ -333,7 +326,7 @@ context['main'](**kwargs)
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
         proc.communicate(input=script.encode("utf-8"))
         if proc.returncode:
-            raise HookError("Failed to run %s hook." % (self._hook_type,))
+            raise HookError(f"Failed to run {self._hook_type} hook.")
 
     def _ExecuteHookViaImport(self, data, context, **kwargs):
         """Execute the hook code in |data| directly.
@@ -358,7 +351,7 @@ context['main'](**kwargs)
 
         # Running the script should have defined a main() function.
         if "main" not in context:
-            raise HookError('Missing main() in: "%s"' % self._script_fullpath)
+            raise HookError(f'Missing main() in: "{self._script_fullpath}"')
 
         # Call the main function in the hook.  If the hook should cause the
         # build to fail, it will raise an Exception.  We'll catch that convert
@@ -444,9 +437,7 @@ context['main'](**kwargs)
     def _CheckHook(self):
         # Bail with a nice error if we can't find the hook.
         if not os.path.isfile(self._script_fullpath):
-            raise HookError(
-                "Couldn't find repo hook: %s" % self._script_fullpath
-            )
+            raise HookError(f"Couldn't find repo hook: {self._script_fullpath}")
 
     def Run(self, **kwargs):
         """Run the hook.
@@ -492,13 +483,12 @@ context['main'](**kwargs)
         except SystemExit as e:
             passed = False
             print(
-                "ERROR: %s hooks exited with exit code: %s"
-                % (self._hook_type, str(e)),
+                f"ERROR: {self._hook_type} hooks exited with exit code: {str(e)}",
                 file=sys.stderr,
             )
         except HookError as e:
             passed = False
-            print("ERROR: %s" % str(e), file=sys.stderr)
+            print(f"ERROR: {str(e)}", file=sys.stderr)
 
         if not passed and self._ignore_hooks:
             print(
@@ -523,15 +513,11 @@ context['main'](**kwargs)
         """
         for key in ("bypass_hooks", "allow_all_hooks", "ignore_hooks"):
             kwargs.setdefault(key, getattr(opt, key))
-        kwargs.update(
-            {
-                "hooks_project": manifest.repo_hooks_project,
-                "repo_topdir": manifest.topdir,
-                "manifest_url": manifest.manifestProject.GetRemote(
-                    "origin"
-                ).url,
-            }
-        )
+        kwargs |= {
+            "hooks_project": manifest.repo_hooks_project,
+            "repo_topdir": manifest.topdir,
+            "manifest_url": manifest.manifestProject.GetRemote("origin").url,
+        }
         return cls(*args, **kwargs)
 
     @staticmethod
@@ -541,21 +527,21 @@ context['main'](**kwargs)
         # Note that verify and no-verify are NOT opposites of each other, which
         # is why they store to different locations. We are using them to match
         # 'git commit' syntax.
-        group = parser.add_option_group(name + " hooks")
+        group = parser.add_option_group(f"{name} hooks")
         group.add_option(
             "--no-verify",
             dest="bypass_hooks",
             action="store_true",
-            help="Do not run the %s hook." % name,
+            help=f"Do not run the {name} hook.",
         )
         group.add_option(
             "--verify",
             dest="allow_all_hooks",
             action="store_true",
-            help="Run the %s hook without prompting." % name,
+            help=f"Run the {name} hook without prompting.",
         )
         group.add_option(
             "--ignore-hooks",
             action="store_true",
-            help="Do not abort if %s hooks fail." % name,
+            help=f"Do not abort if {name} hooks fail.",
         )

@@ -20,6 +20,7 @@ People shouldn't run this directly; instead, they should use the `repo` wrapper
 which takes care of execing this entry point.
 """
 
+
 import getpass
 import netrc
 import optparse
@@ -80,20 +81,19 @@ if sys.version_info.major < 3:
         file=sys.stderr,
     )
     sys.exit(1)
-else:
-    if sys.version_info < MIN_PYTHON_VERSION_HARD:
-        print(
-            "repo: error: Python 3 version is too old; "
-            "Please upgrade to Python {}.{}+.".format(*MIN_PYTHON_VERSION_SOFT),
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    elif sys.version_info < MIN_PYTHON_VERSION_SOFT:
-        print(
-            "repo: warning: your Python 3 version is no longer supported; "
-            "Please upgrade to Python {}.{}+.".format(*MIN_PYTHON_VERSION_SOFT),
-            file=sys.stderr,
-        )
+elif sys.version_info < MIN_PYTHON_VERSION_HARD:
+    print(
+        "repo: error: Python 3 version is too old; "
+        "Please upgrade to Python {}.{}+.".format(*MIN_PYTHON_VERSION_SOFT),
+        file=sys.stderr,
+    )
+    sys.exit(1)
+elif sys.version_info < MIN_PYTHON_VERSION_SOFT:
+    print(
+        "repo: warning: your Python 3 version is no longer supported; "
+        "Please upgrade to Python {}.{}+.".format(*MIN_PYTHON_VERSION_SOFT),
+        file=sys.stderr,
+    )
 
 
 global_options = optparse.OptionParser(
@@ -229,7 +229,7 @@ class _Repo(object):
         if name in self.commands:
             return name, []
 
-        key = "alias.%s" % (name,)
+        key = f"alias.{name}"
         alias = RepoConfig.ForRepository(self.repodir).GetString(key)
         if alias is None:
             alias = RepoConfig.ForUser().GetString(key)
@@ -238,10 +238,7 @@ class _Repo(object):
 
         args = alias.strip().split(" ", 1)
         name = args[0]
-        if len(args) == 2:
-            args = shlex.split(args[1])
-        else:
-            args = []
+        args = shlex.split(args[1]) if len(args) == 2 else []
         return name, args
 
     def _Run(self, name, gopts, argv):
@@ -315,7 +312,7 @@ class _Repo(object):
             )
         except KeyError:
             print(
-                "repo: '%s' is not a repo command.  See 'repo help'." % name,
+                f"repo: '{name}' is not a repo command.  See 'repo help'.",
                 file=sys.stderr,
             )
             return 1
@@ -323,34 +320,25 @@ class _Repo(object):
         Editor.globalConfig = cmd.client.globalConfig
 
         if not isinstance(cmd, MirrorSafeCommand) and cmd.manifest.IsMirror:
-            print(
-                "fatal: '%s' requires a working directory" % name,
-                file=sys.stderr,
-            )
+            print(f"fatal: '{name}' requires a working directory", file=sys.stderr)
             return 1
 
         if (
             isinstance(cmd, GitcAvailableCommand)
             and not gitc_utils.get_gitc_manifest_dir()
         ):
-            print(
-                "fatal: '%s' requires GITC to be available" % name,
-                file=sys.stderr,
-            )
+            print(f"fatal: '{name}' requires GITC to be available", file=sys.stderr)
             return 1
 
         if isinstance(cmd, GitcClientCommand) and not gitc_client_name:
-            print("fatal: '%s' requires a GITC client" % name, file=sys.stderr)
+            print(f"fatal: '{name}' requires a GITC client", file=sys.stderr)
             return 1
 
         try:
             copts, cargs = cmd.OptionParser.parse_args(argv)
             copts = cmd.ReadEnvironmentOptions(copts)
         except NoManifestException as e:
-            print(
-                "error: in `%s`: %s" % (" ".join([name] + argv), str(e)),
-                file=sys.stderr,
-            )
+            print(f'error: in `{" ".join([name] + argv)}`: {str(e)}', file=sys.stderr)
             print(
                 "error: manifest missing or unreadable -- please run init",
                 file=sys.stderr,
@@ -362,7 +350,7 @@ class _Repo(object):
             if gopts.pager:
                 use_pager = True
             else:
-                use_pager = config.GetBoolean("pager.%s" % name)
+                use_pager = config.GetBoolean(f"pager.{name}")
                 if use_pager is None:
                     use_pager = cmd.WantPager(copts)
             if use_pager:
@@ -414,10 +402,7 @@ class _Repo(object):
             ManifestInvalidRevisionError,
             NoManifestException,
         ) as e:
-            print(
-                "error: in `%s`: %s" % (" ".join([name] + argv), str(e)),
-                file=sys.stderr,
-            )
+            print(f'error: in `{" ".join([name] + argv)}`: {str(e)}', file=sys.stderr)
             if isinstance(e, NoManifestException):
                 print(
                     "error: manifest missing or unreadable -- please run init",
@@ -426,15 +411,14 @@ class _Repo(object):
             result = 1
         except NoSuchProjectError as e:
             if e.name:
-                print("error: project %s not found" % e.name, file=sys.stderr)
+                print(f"error: project {e.name} not found", file=sys.stderr)
             else:
                 print("error: no project in current directory", file=sys.stderr)
             result = 1
         except InvalidProjectGroupsError as e:
             if e.name:
                 print(
-                    "error: project group must be enabled for project %s"
-                    % e.name,
+                    f"error: project group must be enabled for project {e.name}",
                     file=sys.stderr,
                 )
             else:
@@ -565,7 +549,7 @@ def _PruneOptions(argv, opt):
         if a.startswith("--"):
             eq = a.find("=")
             if eq > 0:
-                a = a[0:eq]
+                a = a[:eq]
         if not opt.has_option(a):
             del argv[i]
             continue
@@ -664,14 +648,11 @@ class _KerberosAuthHandler(urllib.request.BaseHandler):
 
     def http_error_401(self, req, fp, code, msg, headers):
         host = req.get_host()
-        retry = self.http_error_auth_reqed(
-            "www-authenticate", host, req, headers
-        )
-        return retry
+        return self.http_error_auth_reqed("www-authenticate", host, req, headers)
 
     def http_error_auth_reqed(self, auth_header, host, req, headers):
         try:
-            spn = "HTTP@%s" % host
+            spn = f"HTTP@{host}"
             authdata = self._negotiate_get_authdata(auth_header, headers)
 
             if self.retried > 3:
@@ -728,15 +709,13 @@ class _KerberosAuthHandler(urllib.request.BaseHandler):
             return None
 
         response = kerberos.authGSSClientResponse(self.context)
-        return "Negotiate %s" % response
+        return f"Negotiate {response}"
 
     def _validate_response(self, authdata):
         if authdata is None:
             return None
         result = kerberos.authGSSClientStep(self.context, authdata)
-        if result == kerberos.AUTH_GSS_COMPLETE:
-            return True
-        return None
+        return True if result == kerberos.AUTH_GSS_COMPLETE else None
 
     def _clean_context(self):
         if self.context is not None:
@@ -752,8 +731,8 @@ def init_http():
         n = netrc.netrc()
         for host in n.hosts:
             p = n.hosts[host]
-            mgr.add_password(p[1], "http://%s/" % host, p[0], p[2])
-            mgr.add_password(p[1], "https://%s/" % host, p[0], p[2])
+            mgr.add_password(p[1], f"http://{host}/", p[0], p[2])
+            mgr.add_password(p[1], f"https://{host}/", p[0], p[2])
     except netrc.NetrcParseError:
         pass
     except IOError:
@@ -815,7 +794,7 @@ def _Main(argv):
         print("aborted by user", file=sys.stderr)
         result = 1
     except ManifestParseError as mpe:
-        print("fatal: %s" % mpe, file=sys.stderr)
+        print(f"fatal: {mpe}", file=sys.stderr)
         result = 1
     except RepoChangedException as rce:
         # If repo changed, re-exec ourselves.
@@ -826,7 +805,7 @@ def _Main(argv):
             os.execv(sys.executable, [__file__] + argv)
         except OSError as e:
             print("fatal: cannot restart repo after upgrade", file=sys.stderr)
-            print("fatal: %s" % e, file=sys.stderr)
+            print(f"fatal: {e}", file=sys.stderr)
             result = 128
 
     TerminatePager()

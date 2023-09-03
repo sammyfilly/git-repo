@@ -115,13 +115,11 @@ class Command(object):
     def OptionParser(self):
         if self._optparse is None:
             try:
-                me = "repo %s" % self.NAME
+                me = f"repo {self.NAME}"
                 usage = self.helpUsage.strip().replace("%prog", me)
             except AttributeError:
-                usage = "repo %s" % self.NAME
-            epilog = (
-                "Run `repo help %s` to view the detailed manual." % self.NAME
-            )
+                usage = f"repo {self.NAME}"
+            epilog = f"Run `repo help {self.NAME}` to view the detailed manual."
             self._optparse = optparse.OptionParser(usage=usage, epilog=epilog)
             self._CommonOptions(self._optparse)
             self._Options(self._optparse)
@@ -272,23 +270,21 @@ class Command(object):
             The |callback| function's results are returned.
         """
         try:
-            # NB: Multiprocessing is heavy, so don't spin it up for one job.
             if len(inputs) == 1 or jobs == 1:
                 return callback(None, output, (func(x) for x in inputs))
-            else:
-                with multiprocessing.Pool(jobs) as pool:
-                    submit = pool.imap if ordered else pool.imap_unordered
-                    return callback(
-                        pool,
-                        output,
-                        submit(func, inputs, chunksize=WORKER_BATCH_SIZE),
-                    )
+            with multiprocessing.Pool(jobs) as pool:
+                submit = pool.imap if ordered else pool.imap_unordered
+                return callback(
+                    pool,
+                    output,
+                    submit(func, inputs, chunksize=WORKER_BATCH_SIZE),
+                )
         finally:
             if isinstance(output, progress.Progress):
                 output.end()
 
     def _ResetPathToProjectMap(self, projects):
-        self._by_path = dict((p.worktree, p) for p in projects)
+        self._by_path = {p.worktree: p for p in projects}
 
     def _UpdatePathToProjectMap(self, project):
         self._by_path[project.worktree] = project
@@ -445,7 +441,7 @@ class Command(object):
                 (sub)manifest is used.
         """
         result = []
-        patterns = [re.compile(r"%s" % a, re.IGNORECASE) for a in args]
+        patterns = [re.compile(f"{a}", re.IGNORECASE) for a in args]
         for project in self.GetProjects("", all_manifests=all_manifests):
             paths = [project.name, project.RelPath(local=not all_manifests)]
             for pattern in patterns:
@@ -474,8 +470,7 @@ class Command(object):
             top = self.manifest
         yield top
         if not opt.this_manifest_only:
-            for child in top.all_children:
-                yield child
+            yield from top.all_children
 
 
 class InteractiveCommand(Command):

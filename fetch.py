@@ -35,15 +35,12 @@ def fetch_file(url, verbose=False):
             )
             if result.stderr and verbose:
                 print(
-                    'warning: non-fatal error running "gsutil": %s'
-                    % result.stderr,
+                    f'warning: non-fatal error running "gsutil": {result.stderr}',
                     file=sys.stderr,
                 )
             return result.stdout
         except subprocess.CalledProcessError as e:
-            print(
-                'fatal: error running "gsutil": %s' % e.stderr, file=sys.stderr
-            )
+            print(f'fatal: error running "gsutil": {e.stderr}', file=sys.stderr)
         sys.exit(1)
     with urlopen(url) as f:
         return f.read()

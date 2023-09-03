@@ -22,7 +22,7 @@ R_HEADS = "refs/heads/"
 R_TAGS = "refs/tags/"
 R_PUB = "refs/published/"
 R_WORKTREE = "refs/worktree/"
-R_WORKTREE_M = R_WORKTREE + "m/"
+R_WORKTREE_M = f"{R_WORKTREE}m/"
 R_M = "refs/remotes/m/"
 
 

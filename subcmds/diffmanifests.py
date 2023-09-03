@@ -87,25 +87,16 @@ synced and their revisions won't be found.
     def _printRawDiff(self, diff, pretty_format=None, local=False):
         _RelPath = lambda p: p.RelPath(local=local)
         for project in diff["added"]:
-            self.printText(
-                "A %s %s" % (_RelPath(project), project.revisionExpr)
-            )
+            self.printText(f"A {_RelPath(project)} {project.revisionExpr}")
             self.out.nl()
 
         for project in diff["removed"]:
-            self.printText(
-                "R %s %s" % (_RelPath(project), project.revisionExpr)
-            )
+            self.printText(f"R {_RelPath(project)} {project.revisionExpr}")
             self.out.nl()
 
         for project, otherProject in diff["changed"]:
             self.printText(
-                "C %s %s %s"
-                % (
-                    _RelPath(project),
-                    project.revisionExpr,
-                    otherProject.revisionExpr,
-                )
+                f"C {_RelPath(project)} {project.revisionExpr} {otherProject.revisionExpr}"
             )
             self.out.nl()
             self._printLogs(
@@ -118,12 +109,7 @@ synced and their revisions won't be found.
 
         for project, otherProject in diff["unreachable"]:
             self.printText(
-                "U %s %s %s"
-                % (
-                    _RelPath(project),
-                    project.revisionExpr,
-                    otherProject.revisionExpr,
-                )
+                f"U {_RelPath(project)} {project.revisionExpr} {otherProject.revisionExpr}"
             )
             self.out.nl()
 
@@ -205,24 +191,22 @@ synced and their revisions won't be found.
             for log in removedLogs:
                 if log.strip():
                     if raw:
-                        self.printText(" R " + log)
-                        self.out.nl()
+                        self.printText(f" R {log}")
                     else:
                         self.printRemoved("\t\t[-] ")
                         self.printText(log)
-                        self.out.nl()
-
+                    self.out.nl()
         if logs["added"]:
             addedLogs = logs["added"].split("\n")
             for log in addedLogs:
                 if log.strip():
                     if raw:
-                        self.printText(" A " + log)
-                        self.out.nl()
+                        self.printText(f" A {log}")
                     else:
                         self.printAdded("\t\t[+] ")
                         self.printText(log)
-                        self.out.nl()
+
+                    self.out.nl()
 
     def ValidateOptions(self, opt, args):
         if not args or len(args) > 2:

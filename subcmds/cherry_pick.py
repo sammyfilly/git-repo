@@ -99,19 +99,14 @@ change id will be added.
         return CHANGE_ID_RE.match(line)
 
     def _GetReference(self, sha1):
-        return "(cherry picked from commit %s)" % sha1
+        return f"(cherry picked from commit {sha1})"
 
     def _StripHeader(self, commit_msg):
         lines = commit_msg.splitlines()
         return "\n".join(lines[lines.index("") + 1 :])
 
     def _Reformat(self, old_msg, sha1):
-        new_msg = []
-
-        for line in old_msg.splitlines():
-            if not self._IsChangeId(line):
-                new_msg.append(line)
-
+        new_msg = [line for line in old_msg.splitlines() if not self._IsChangeId(line)]
         # Add a blank line between the message and the change id/reference.
         try:
             if new_msg[-1].strip() != "":

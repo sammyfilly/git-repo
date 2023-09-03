@@ -262,7 +262,7 @@ contain a line that matches both expressions:
         for project, rc, stdout, stderr in results:
             if rc < 0:
                 git_failed = True
-                out.project("--- project %s ---" % _RelPath(project))
+                out.project(f"--- project {_RelPath(project)} ---")
                 out.nl()
                 out.fail("%s", stderr)
                 out.nl()
@@ -274,7 +274,7 @@ contain a line that matches both expressions:
                     if have_rev and "fatal: ambiguous argument" in stderr:
                         bad_rev = True
                     else:
-                        out.project("--- project %s ---" % _RelPath(project))
+                        out.project(f"--- project {_RelPath(project)} ---")
                         out.nl()
                         out.fail("%s", stderr.strip())
                         out.nl()
@@ -283,7 +283,7 @@ contain a line that matches both expressions:
 
             # We cut the last element, to avoid a blank line.
             r = stdout.split("\n")
-            r = r[0:-1]
+            r = r[:-1]
 
             if have_rev and full_name:
                 for line in r:
@@ -317,8 +317,7 @@ contain a line that matches both expressions:
         if "-e" not in cmd_argv:
             if not args:
                 self.Usage()
-            cmd_argv.append("-e")
-            cmd_argv.append(args[0])
+            cmd_argv.extend(("-e", args[0]))
             args = args[1:]
 
         projects = self.GetProjects(
@@ -353,13 +352,11 @@ contain a line that matches both expressions:
             ordered=True,
         )
 
-        if git_failed:
+        if git_failed or not have_match and (not have_rev or not bad_rev):
             sys.exit(1)
         elif have_match:
             sys.exit(0)
-        elif have_rev and bad_rev:
-            for r in opt.revision:
-                print("error: can't search revision %s" % r, file=sys.stderr)
-            sys.exit(1)
         else:
+            for r in opt.revision:
+                print(f"error: can't search revision {r}", file=sys.stderr)
             sys.exit(1)

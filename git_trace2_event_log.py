@@ -77,7 +77,7 @@ class EventLog(object):
         parent_sid = env.get(KEY)
         # Append our sid component to the parent sid (if it exists).
         if parent_sid is not None:
-            self._full_sid = parent_sid + "/" + self._sid
+            self._full_sid = f"{parent_sid}/{self._sid}"
         else:
             self._full_sid = self._sid
 
@@ -115,7 +115,7 @@ class EventLog(object):
             "event": event_name,
             "sid": self._full_sid,
             "thread": threading.current_thread().name,
-            "time": datetime.datetime.utcnow().isoformat() + "Z",
+            "time": f"{datetime.datetime.utcnow().isoformat()}Z",
         }
 
     def StartEvent(self):
@@ -285,28 +285,27 @@ class EventLog(object):
 
         path_is_socket = False
         socket_type = None
-        if isinstance(path, str):
-            parts = path.split(":", 1)
-            if parts[0] == "af_unix" and len(parts) == 2:
-                path_is_socket = True
-                path = parts[1]
-                parts = path.split(":", 1)
-                if parts[0] == "stream" and len(parts) == 2:
-                    socket_type = socket.SOCK_STREAM
-                    path = parts[1]
-                elif parts[0] == "dgram" and len(parts) == 2:
-                    socket_type = socket.SOCK_DGRAM
-                    path = parts[1]
-            else:
-                # Get absolute path.
-                path = os.path.abspath(os.path.expanduser(path))
-        else:
-            raise TypeError("path: str required but got %s." % type(path))
+        if not isinstance(path, str):
+            raise TypeError(f"path: str required but got {type(path)}.")
 
+        parts = path.split(":", 1)
+        if parts[0] == "af_unix" and len(parts) == 2:
+            path_is_socket = True
+            path = parts[1]
+            parts = path.split(":", 1)
+            if parts[0] == "stream" and len(parts) == 2:
+                socket_type = socket.SOCK_STREAM
+                path = parts[1]
+            elif parts[0] == "dgram" and len(parts) == 2:
+                socket_type = socket.SOCK_DGRAM
+                path = parts[1]
+        else:
+            # Get absolute path.
+            path = os.path.abspath(os.path.expanduser(path))
         # Git trace2 requires a directory to write log to.
 
         # TODO(https://crbug.com/gerrit/13706): Support file (append) mode also.
-        if not (path_is_socket or os.path.isdir(path)):
+        if not path_is_socket and not os.path.isdir(path):
             return None
 
         if path_is_socket:
