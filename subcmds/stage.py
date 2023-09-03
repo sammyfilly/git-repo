@@ -75,7 +75,7 @@ The '%prog' command stages files to prepare the next commit.
                 out.write(
                     "%3d:    %s",
                     i + 1,
-                    project.RelPath(local=opt.this_manifest_only) + "/",
+                    f"{project.RelPath(local=opt.this_manifest_only)}/",
                 )
                 out.nl()
             out.nl()
@@ -110,7 +110,7 @@ The '%prog' command stages files to prepare the next commit.
             if a_index is not None:
                 if a_index == 0:
                     break
-                if 0 < a_index and a_index <= len(all_projects):
+                if 0 < a_index <= len(all_projects):
                     _AddI(all_projects[a_index - 1])
                     continue
 

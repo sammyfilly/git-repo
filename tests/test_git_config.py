@@ -100,7 +100,7 @@ class GitConfigReadOnlyTests(unittest.TestCase):
             ("intg", 10737418240),
         )
         for key, value in TESTS:
-            self.assertEqual(value, self.config.GetInt("section.%s" % (key,)))
+            self.assertEqual(value, self.config.GetInt(f"section.{key}"))
 
 
 class GitConfigReadWriteTests(unittest.TestCase):
@@ -168,8 +168,7 @@ class GitConfigReadWriteTests(unittest.TestCase):
 
     def test_GetSyncAnalysisStateData(self):
         """Test config entries with a sync state analysis data."""
-        superproject_logging_data = {}
-        superproject_logging_data["test"] = False
+        superproject_logging_data = {"test": False}
         options = type("options", (object,), {})()
         options.verbose = "true"
         options.mp_update = "false"

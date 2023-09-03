@@ -130,8 +130,7 @@ class Info(PagedCommand):
             self.headtext(p.GetRevisionId())
             self.out.nl()
 
-            currentBranch = p.CurrentBranch
-            if currentBranch:
+            if currentBranch := p.CurrentBranch:
                 self.heading("Current branch: ")
                 self.headtext(currentBranch)
                 self.out.nl()
@@ -170,7 +169,7 @@ class Info(PagedCommand):
             "--abbrev=8",
             "--abbrev-commit",
             "--pretty=oneline",
-            logTarget + "..",
+            f"{logTarget}..",
             "--",
         )
 
@@ -178,7 +177,7 @@ class Info(PagedCommand):
             "--abbrev=8",
             "--abbrev-commit",
             "--pretty=oneline",
-            ".." + logTarget,
+            f"..{logTarget}",
             "--",
         )
         project.bare_git._bare = bareTmp
@@ -190,7 +189,7 @@ class Info(PagedCommand):
 
         for c in localCommits:
             split = c.split()
-            self.sha(split[0] + " ")
+            self.sha(f"{split[0]} ")
             self.text(" ".join(split[1:]))
             self.out.nl()
 
@@ -202,7 +201,7 @@ class Info(PagedCommand):
 
         for c in originCommits:
             split = c.split()
-            self.sha(split[0] + " ")
+            self.sha(f"{split[0]} ")
             self.text(" ".join(split[1:]))
             self.out.nl()
 
@@ -248,6 +247,6 @@ class Info(PagedCommand):
             for commit in commits:
                 split = commit.split()
                 self.text("{0:38}{1} ".format("", "-"))
-                self.sha(split[0] + " ")
+                self.sha(f"{split[0]} ")
                 self.text(" ".join(split[1:]))
                 self.out.nl()

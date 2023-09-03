@@ -83,9 +83,7 @@ Displays detailed usage information about a command.
                 return True
             if isinstance(cmd, GitcClientCommand):
                 return False
-            if gitc_utils.get_gitc_manifest_dir():
-                return True
-            return False
+            return bool(gitc_utils.get_gitc_manifest_dir())
 
         commandNames = list(
             sorted(
@@ -106,6 +104,9 @@ Displays detailed usage information about a command.
         print("Bug reports:", Wrapper().BUG_URL)
 
     def _PrintCommandHelp(self, cmd, header_prefix=""):
+
+
+
         class _Out(Coloring):
             def __init__(self, gc):
                 Coloring.__init__(self, gc, "help")
@@ -128,7 +129,7 @@ Displays detailed usage information about a command.
                 self.nl()
                 self.nl()
 
-                me = "repo %s" % cmd.NAME
+                me = f"repo {cmd.NAME}"
                 body = body.strip()
                 body = body.replace("%prog", me)
 
@@ -141,8 +142,7 @@ Displays detailed usage information about a command.
                         self.nl()
                         continue
 
-                    m = asciidoc_hdr.match(para)
-                    if m:
+                    if m := asciidoc_hdr.match(para):
                         self.heading("%s%s", header_prefix, m.group(1))
                         self.nl()
                         self.nl()
@@ -159,6 +159,7 @@ Displays detailed usage information about a command.
                         self.nl()
                     self.nl()
 
+
         out = _Out(self.client.globalConfig)
         out._PrintSection("Summary", "helpSummary")
         cmd.OptionParser.print_help()
@@ -167,7 +168,7 @@ Displays detailed usage information about a command.
     def _PrintAllCommandHelp(self):
         for name in sorted(all_commands):
             cmd = all_commands[name](manifest=self.manifest)
-            self._PrintCommandHelp(cmd, header_prefix="[%s] " % (name,))
+            self._PrintCommandHelp(cmd, header_prefix=f"[{name}] ")
 
     def _Options(self, p):
         p.add_option(
@@ -199,9 +200,7 @@ Displays detailed usage information about a command.
             try:
                 cmd = all_commands[name](manifest=self.manifest)
             except KeyError:
-                print(
-                    "repo: '%s' is not a repo command." % name, file=sys.stderr
-                )
+                print(f"repo: '{name}' is not a repo command.", file=sys.stderr)
                 sys.exit(1)
 
             self._PrintCommandHelp(cmd)

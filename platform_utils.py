@@ -34,22 +34,21 @@ def symlink(source, link_name):
     Note: On Windows, source must exist on disk, as the implementation needs
     to know whether to create a "File" or a "Directory" symbolic link.
     """
-    if isWindows():
-        import platform_utils_win32
-
-        source = _validate_winpath(source)
-        link_name = _validate_winpath(link_name)
-        target = os.path.join(os.path.dirname(link_name), source)
-        if isdir(target):
-            platform_utils_win32.create_dirsymlink(
-                _makelongpath(source), link_name
-            )
-        else:
-            platform_utils_win32.create_filesymlink(
-                _makelongpath(source), link_name
-            )
-    else:
+    if not isWindows():
         return os.symlink(source, link_name)
+    import platform_utils_win32
+
+    source = _validate_winpath(source)
+    link_name = _validate_winpath(link_name)
+    target = os.path.join(os.path.dirname(link_name), source)
+    if isdir(target):
+        platform_utils_win32.create_dirsymlink(
+            _makelongpath(source), link_name
+        )
+    else:
+        platform_utils_win32.create_filesymlink(
+            _makelongpath(source), link_name
+        )
 
 
 def _validate_winpath(path):
@@ -57,8 +56,7 @@ def _validate_winpath(path):
     if _winpath_is_valid(path):
         return path
     raise ValueError(
-        'Path "{}" must be a relative path or an absolute '
-        "path starting with a drive letter".format(path)
+        f'Path "{path}" must be a relative path or an absolute path starting with a drive letter'
     )
 
 
@@ -71,10 +69,7 @@ def _winpath_is_valid(path):
     path = os.path.normpath(path)
     drive, tail = os.path.splitdrive(path)
     if tail:
-        if not drive:
-            return tail[0] != os.sep  # "\\foo" is invalid
-        else:
-            return tail[0] == os.sep  # "x:foo" is invalid
+        return tail[0] != os.sep if not drive else tail[0] == os.sep
     else:
         return not drive  # "x:" is invalid
 
@@ -84,20 +79,15 @@ def _makelongpath(path):
     ("\\\\?\\" prefix) if needed, i.e. if the input path is longer than the
     MAX_PATH limit.
     """
-    if isWindows():
-        # Note: MAX_PATH is 260, but, for directories, the maximum value is
-        # actually 246.
-        if len(path) < 246:
-            return path
-        if path.startswith("\\\\?\\"):
-            return path
-        if not os.path.isabs(path):
-            return path
-        # Append prefix and ensure unicode so that the special longpath syntax
-        # is supported by underlying Win32 API calls
-        return "\\\\?\\" + os.path.normpath(path)
-    else:
+    if not isWindows():
         return path
+    # Note: MAX_PATH is 260, but, for directories, the maximum value is
+    # actually 246.
+    if len(path) < 246:
+        return path
+    if path.startswith("\\\\?\\"):
+        return path
+    return path if not os.path.isabs(path) else "\\\\?\\" + os.path.normpath(path)
 
 
 def rmtree(path, ignore_errors=False):
@@ -129,11 +119,10 @@ def rename(src, dst):
         try:
             os.rename(_makelongpath(src), _makelongpath(dst))
         except OSError as e:
-            if e.errno == errno.EEXIST:
-                os.remove(_makelongpath(dst))
-                os.rename(_makelongpath(src), _makelongpath(dst))
-            else:
+            if e.errno != errno.EEXIST:
                 raise
+            os.remove(_makelongpath(dst))
+            os.rename(_makelongpath(src), _makelongpath(dst))
     else:
         shutil.move(src, dst)
 
@@ -156,9 +145,7 @@ def remove(path, missing_ok=False):
                 os.rmdir(longpath)
             else:
                 os.remove(longpath)
-        elif missing_ok and e.errno == errno.ENOENT:
-            pass
-        else:
+        elif not missing_ok or e.errno != errno.ENOENT:
             raise
 
 
@@ -193,10 +180,9 @@ def _walk_windows_impl(top, topdown, onerror, followlinks):
     for name in dirs:
         new_path = os.path.join(top, name)
         if followlinks or not islink(new_path):
-            for x in _walk_windows_impl(
+            yield from _walk_windows_impl(
                 new_path, topdown, onerror, followlinks
-            ):
-                yield x
+            )
     if not topdown:
         yield top, dirs, nondirs
 
@@ -230,12 +216,11 @@ def islink(path):
 
     Availability: Windows, Unix.
     """
-    if isWindows():
-        import platform_utils_win32
-
-        return platform_utils_win32.islink(_makelongpath(path))
-    else:
+    if not isWindows():
         return os.path.islink(path)
+    import platform_utils_win32
+
+    return platform_utils_win32.islink(_makelongpath(path))
 
 
 def readlink(path):
@@ -246,12 +231,11 @@ def readlink(path):
 
     Availability: Windows, Unix.
     """
-    if isWindows():
-        import platform_utils_win32
-
-        return platform_utils_win32.readlink(_makelongpath(path))
-    else:
+    if not isWindows():
         return os.readlink(path)
+    import platform_utils_win32
+
+    return platform_utils_win32.readlink(_makelongpath(path))
 
 
 def realpath(path):
@@ -260,24 +244,22 @@ def realpath(path):
 
     Availability: Windows, Unix.
     """
-    if isWindows():
-        current_path = os.path.abspath(path)
-        path_tail = []
-        for c in range(0, 100):  # Avoid cycles
-            if islink(current_path):
-                target = readlink(current_path)
-                current_path = os.path.join(
-                    os.path.dirname(current_path), target
-                )
-            else:
-                basename = os.path.basename(current_path)
-                if basename == "":
-                    path_tail.append(current_path)
-                    break
-                path_tail.append(basename)
-                current_path = os.path.dirname(current_path)
-        path_tail.reverse()
-        result = os.path.normpath(os.path.join(*path_tail))
-        return result
-    else:
+    if not isWindows():
         return os.path.realpath(path)
+    current_path = os.path.abspath(path)
+    path_tail = []
+    for _ in range(0, 100):
+        if islink(current_path):
+            target = readlink(current_path)
+            current_path = os.path.join(
+                os.path.dirname(current_path), target
+            )
+        else:
+            basename = os.path.basename(current_path)
+            if basename == "":
+                path_tail.append(current_path)
+                break
+            path_tail.append(basename)
+            current_path = os.path.dirname(current_path)
+    path_tail.reverse()
+    return os.path.normpath(os.path.join(*path_tail))

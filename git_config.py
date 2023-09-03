@@ -38,7 +38,7 @@ SYNC_STATE_PREFIX = "repo.syncstate."
 
 ID_RE = re.compile(r"^[0-9a-f]{40}$")
 
-REVIEW_CACHE = dict()
+REVIEW_CACHE = {}
 
 
 def IsChange(rev):
@@ -104,7 +104,7 @@ class GitConfig(object):
         if self._json is None:
             self._json = os.path.join(
                 os.path.dirname(self.file),
-                ".repo_" + os.path.basename(self.file) + ".json",
+                f".repo_{os.path.basename(self.file)}.json",
             )
 
     def ClearCache(self):
@@ -147,10 +147,7 @@ class GitConfig(object):
             v = v[:-1]
             mult = 1024 * 1024 * 1024
 
-        base = 10
-        if v.startswith("0x"):
-            base = 16
-
+        base = 16 if v.startswith("0x") else 10
         try:
             return int(v, base=base) * mult
         except ValueError:
@@ -171,10 +168,7 @@ class GitConfig(object):
             dict of {<key>, <value>} for git configuration cache.
             <value> are strings converted by GetString.
         """
-        config_dict = {}
-        for key in self._cache:
-            config_dict[key] = self.GetString(key)
-        return config_dict
+        return {key: self.GetString(key) for key in self._cache}
 
     def GetBoolean(self, name: str) -> Union[str, None]:
         """Returns a boolean from the configuration file.
@@ -218,12 +212,8 @@ class GitConfig(object):
             v = []
 
         if not all_keys:
-            if v:
-                return v[0]
-            return None
-
-        r = []
-        r.extend(v)
+            return v[0] if v else None
+        r = list(v)
         if self.defaults:
             r.extend(self.defaults.GetString(name, all_keys=True))
         return r
@@ -318,7 +308,7 @@ class GitConfig(object):
     def UrlInsteadOf(self, url):
         """Resolve any url.*.insteadof references."""
         for new_url in self.GetSubSections("url"):
-            for old_url in self.GetString("url.%s.insteadof" % new_url, True):
+            for old_url in self.GetString(f"url.{new_url}.insteadof", True):
                 if old_url is not None and url.startswith(old_url):
                     return new_url + url[len(old_url) :]
         return url
@@ -330,12 +320,8 @@ class GitConfig(object):
             d = {}
             for name in self._cache.keys():
                 p = name.split(".")
-                if 2 == len(p):
-                    section = p[0]
-                    subsect = ""
-                else:
-                    section = p[0]
-                    subsect = ".".join(p[1:-1])
+                subsect = "" if len(p) == 2 else ".".join(p[1:-1])
+                section = p[0]
                 if section not in d:
                     d[section] = set()
                 d[section].add(subsect)
@@ -414,7 +400,7 @@ class GitConfig(object):
         if p.Wait() == 0:
             return p.stdout
         else:
-            raise GitError("git config %s: %s" % (str(args), p.stderr))
+            raise GitError(f"git config {args}: {p.stderr}")
 
 
 class RepoConfig(GitConfig):
@@ -486,10 +472,7 @@ URI_ALL = re.compile(r"^([a-z][a-z+-]*)://([^@/]*@?[^/]*)/")
 
 
 def GetSchemeFromUrl(url):
-    m = URI_ALL.match(url)
-    if m:
-        return m.group(1)
-    return None
+    return m.group(1) if (m := URI_ALL.match(url)) else None
 
 
 @contextlib.contextmanager
@@ -528,8 +511,6 @@ def GetUrlCookieFile(url, quiet):
                     elif not quiet:
                         print(err_msg, file=sys.stderr)
         except OSError as e:
-            if e.errno == errno.ENOENT:
-                pass  # No persistent proxy.
             raise
     cookiefile = GitConfig.ForUser().GetString("http.cookiefile")
     if cookiefile:
@@ -559,7 +540,7 @@ class Remote(object):
         longestUrl = ""
 
         for url in urlList:
-            key = "url." + url + ".insteadOf"
+            key = f"url.{url}.insteadOf"
             insteadOfList = globCfg.GetString(key, all_keys=True)
 
             for insteadOf in insteadOfList:
@@ -601,7 +582,7 @@ class Remote(object):
             if u.startswith("persistent-"):
                 u = u[len("persistent-") :]
             if u.split(":")[0] not in ("http", "https", "sso", "ssh"):
-                u = "http://%s" % u
+                u = f"http://{u}"
             if u.endswith("/Gerrit"):
                 u = u[: len(u) - len("/Gerrit")]
             if u.endswith("/ssh_info"):
@@ -624,7 +605,7 @@ class Remote(object):
                 REVIEW_CACHE[u] = self._review_url
             else:
                 try:
-                    info_url = u + "ssh_info"
+                    info_url = f"{u}ssh_info"
                     if not validate_certs:
                         context = ssl._create_unverified_context()
                         info = urllib.request.urlopen(
@@ -647,22 +628,20 @@ class Remote(object):
                             userEmail, host, port
                         )
                 except urllib.error.HTTPError as e:
-                    raise UploadError("%s: %s" % (self.review, str(e)))
+                    raise UploadError(f"{self.review}: {str(e)}")
                 except urllib.error.URLError as e:
-                    raise UploadError("%s: %s" % (self.review, str(e)))
+                    raise UploadError(f"{self.review}: {str(e)}")
                 except HTTPException as e:
-                    raise UploadError(
-                        "%s: %s" % (self.review, e.__class__.__name__)
-                    )
+                    raise UploadError(f"{self.review}: {e.__class__.__name__}")
 
                 REVIEW_CACHE[u] = self._review_url
         return self._review_url + self.projectname
 
     def _SshReviewUrl(self, userEmail, host, port):
-        username = self._config.GetString("review.%s.username" % self.review)
+        username = self._config.GetString(f"review.{self.review}.username")
         if username is None:
             username = userEmail.split("@")[0]
-        return "ssh://%s@%s:%s/" % (username, host, port)
+        return f"ssh://{username}@{host}:{port}/"
 
     def ToLocal(self, rev):
         """Convert a remote revision string to something we have locally."""
@@ -679,31 +658,22 @@ class Remote(object):
         if not rev.startswith(R_HEADS):
             return rev
 
-        raise GitError(
-            "%s: remote %s does not have %s"
-            % (self.projectname, self.name, rev)
-        )
+        raise GitError(f"{self.projectname}: remote {self.name} does not have {rev}")
 
     def WritesTo(self, ref):
         """True if the remote stores to the tracking ref."""
-        for spec in self.fetch:
-            if spec.DestMatches(ref):
-                return True
-        return False
+        return any(spec.DestMatches(ref) for spec in self.fetch)
 
     def ResetFetch(self, mirror=False):
         """Set the fetch refspec to its default value."""
-        if mirror:
-            dst = "refs/heads/*"
-        else:
-            dst = "refs/remotes/%s/*" % self.name
+        dst = "refs/heads/*" if mirror else f"refs/remotes/{self.name}/*"
         self.fetch = [RefSpec(True, "refs/heads/*", dst)]
 
     def Save(self):
         """Save this remote to the configuration."""
         self._Set("url", self.url)
         if self.pushUrl is not None:
-            self._Set("pushurl", self.pushUrl + "/" + self.projectname)
+            self._Set("pushurl", f"{self.pushUrl}/{self.projectname}")
         else:
             self._Set("pushurl", self.pushUrl)
         self._Set("review", self.review)
@@ -711,11 +681,11 @@ class Remote(object):
         self._Set("fetch", list(map(str, self.fetch)))
 
     def _Set(self, key, value):
-        key = "remote.%s.%s" % (self.name, key)
+        key = f"remote.{self.name}.{key}"
         return self._config.SetString(key, value)
 
     def _Get(self, key, all_keys=False):
-        key = "remote.%s.%s" % (self.name, key)
+        key = f"remote.{self.name}.{key}"
         return self._config.GetString(key, all_keys=all_keys)
 
 
@@ -727,18 +697,12 @@ class Branch(object):
         self.name = name
         self.merge = self._Get("merge")
 
-        r = self._Get("remote")
-        if r:
-            self.remote = self._config.GetRemote(r)
-        else:
-            self.remote = None
+        self.remote = self._config.GetRemote(r) if (r := self._Get("remote")) else None
 
     @property
     def LocalMerge(self):
         """Convert the merge spec to a local name."""
-        if self.remote and self.merge:
-            return self.remote.ToLocal(self.merge)
-        return None
+        return self.remote.ToLocal(self.merge) if self.remote and self.merge else None
 
     def Save(self):
         """Save this branch back into the configuration."""
@@ -758,11 +722,11 @@ class Branch(object):
                     fd.write("\tmerge = %s\n" % self.merge)
 
     def _Set(self, key, value):
-        key = "branch.%s.%s" % (self.name, key)
+        key = f"branch.{self.name}.{key}"
         return self._config.SetString(key, value)
 
     def _Get(self, key, all_keys=False):
-        key = "branch.%s.%s" % (self.name, key)
+        key = f"branch.{self.name}.{key}"
         return self._config.GetString(key, all_keys=all_keys)
 
 

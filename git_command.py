@@ -143,11 +143,7 @@ class UserAgent(object):
     def git(self):
         """The UA when running git."""
         if self._git_ua is None:
-            self._git_ua = "git/%s (%s) git-repo/%s" % (
-                git.version_tuple().full,
-                self.os,
-                RepoSourceVersion(),
-            )
+            self._git_ua = f"git/{git.version_tuple().full} ({self.os}) git-repo/{RepoSourceVersion()}"
 
         return self._git_ua
 
@@ -162,10 +158,8 @@ def git_require(min_version, fail=False, msg=""):
     if fail:
         need = ".".join(map(str, min_version))
         if msg:
-            msg = " for " + msg
-        print(
-            "fatal: git %s or later required%s" % (need, msg), file=sys.stderr
-        )
+            msg = f" for {msg}"
+        print(f"fatal: git {need} or later required{msg}", file=sys.stderr)
         sys.exit(1)
     return False
 
@@ -190,11 +184,11 @@ def _build_env(
         env["REPO_SSH_SOCK"] = ssh_proxy.sock()
         env["GIT_SSH"] = ssh_proxy.proxy
         env["GIT_SSH_VARIANT"] = "ssh"
-    if "http_proxy" in env and "darwin" == sys.platform:
-        s = "'http.proxy=%s'" % (env["http_proxy"],)
+    if "http_proxy" in env and sys.platform == "darwin":
+        s = f"""'http.proxy={env["http_proxy"]}'"""
         p = env.get("GIT_CONFIG_PARAMETERS")
         if p is not None:
-            s = p + " " + s
+            s = f"{p} {s}"
         env["GIT_CONFIG_PARAMETERS"] = s
     if "GIT_ALLOW_PROTOCOL" not in env:
         env[
@@ -318,8 +312,8 @@ class GitCommand(object):
                 dbg += " 2>&1"
 
         with Trace(
-            "git command %s %s with debug: %s", LAST_GITDIR, command, dbg
-        ):
+                "git command %s %s with debug: %s", LAST_GITDIR, command, dbg
+            ):
             try:
                 p = subprocess.Popen(
                     command,
@@ -332,7 +326,7 @@ class GitCommand(object):
                     stderr=stderr,
                 )
             except Exception as e:
-                raise GitError("%s: %s" % (command[1], e))
+                raise GitError(f"{command[1]}: {e}")
 
             if ssh_proxy:
                 ssh_proxy.add_client(p)

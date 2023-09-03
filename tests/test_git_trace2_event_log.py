@@ -48,10 +48,10 @@ def serverLoggingThread(socket_path, server_ready, received_traces):
             server_ready.notify()
         with sock.accept()[0] as conn:
             while True:
-                recved = conn.recv(4096)
-                if not recved:
+                if recved := conn.recv(4096):
+                    data += recved
+                else:
                     break
-                data += recved
     received_traces.extend(data.decode("utf-8").splitlines())
 
 
@@ -96,17 +96,13 @@ class EventLogTestCase(unittest.TestCase):
         """Helper function to read log data into a list."""
         log_data = []
         with open(log_path, mode="rb") as f:
-            for line in f:
-                log_data.append(json.loads(line))
+            log_data.extend(json.loads(line) for line in f)
         return log_data
 
     def remove_prefix(self, s, prefix):
         """Return a copy string after removing |prefix| from |s|, if present or
         the original string."""
-        if s.startswith(prefix):
-            return s[len(prefix) :]
-        else:
-            return s
+        return s[len(prefix) :] if s.startswith(prefix) else s
 
     def test_initial_state_with_parent_sid(self):
         """Test initial state when 'GIT_TRACE2_PARENT_SID' is set by parent."""

@@ -85,7 +85,7 @@ def _VerifyPendingCommits(branches: List[ReviewableBranch]) -> bool:
 
 def _die(fmt, *args):
     msg = fmt % args
-    print("error: %s" % msg, file=sys.stderr)
+    print(f"error: {msg}", file=sys.stderr)
     sys.exit(1)
 
 
@@ -368,11 +368,11 @@ Gerrit Code Review:  https://www.gerritcodereview.com/
         name = branch.name
         remote = project.GetBranch(name).remote
 
-        key = "review.%s.autoupload" % remote.review
+        key = f"review.{remote.review}.autoupload"
         answer = project.config.GetBoolean(key)
 
         if answer is False:
-            _die("upload blocked by %s = false" % key)
+            _die(f"upload blocked by {key} = false")
 
         if answer is None:
             date = branch.date
@@ -399,9 +399,9 @@ Gerrit Code Review:  https://www.gerritcodereview.com/
                 )
             )
             for commit in commit_list:
-                print("         %s" % commit)
+                print(f"         {commit}")
 
-            print("to %s (y/N)? " % remote.review, end="", flush=True)
+            print(f"to {remote.review} (y/N)? ", end="", flush=True)
             if opt.yes:
                 print("<--yes>")
                 answer = True
@@ -421,13 +421,10 @@ Gerrit Code Review:  https://www.gerritcodereview.com/
         projects = {}
         branches = {}
 
-        script = []
-        script.append("# Uncomment the branches to upload:")
+        script = ["# Uncomment the branches to upload:"]
         for project, avail in pending:
             project_path = project.RelPath(local=opt.this_manifest_only)
-            script.append("#")
-            script.append(f"# project {project_path}/:")
-
+            script.extend(("#", f"# project {project_path}/:"))
             b = {}
             for branch in avail:
                 if branch is None:
@@ -453,8 +450,7 @@ Gerrit Code Review:  https://www.gerritcodereview.com/
                         destination,
                     )
                 )
-                for commit in commit_list:
-                    script.append("#         %s" % commit)
+                script.extend(f"#         {commit}" for commit in commit_list)
                 b[name] = branch
 
             projects[project_path] = project
@@ -470,16 +466,14 @@ Gerrit Code Review:  https://www.gerritcodereview.com/
         todo = []
 
         for line in script:
-            m = project_re.match(line)
-            if m:
+            if m := project_re.match(line):
                 name = m.group(1)
                 project = projects.get(name)
                 if not project:
                     _die("project %s not available for upload", name)
                 continue
 
-            m = branch_re.match(line)
-            if m:
+            if m := branch_re.match(line):
                 name = m.group(1)
                 if not project:
                     _die("project for branch %s not in script", name)
@@ -506,12 +500,12 @@ Gerrit Code Review:  https://www.gerritcodereview.com/
         name = branch.name
         project = branch.project
 
-        key = "review.%s.autoreviewer" % project.GetBranch(name).remote.review
+        key = f"review.{project.GetBranch(name).remote.review}.autoreviewer"
         raw_list = project.config.GetString(key)
         if raw_list is not None:
             people[0].extend([entry.strip() for entry in raw_list.split(",")])
 
-        key = "review.%s.autocopy" % project.GetBranch(name).remote.review
+        key = f"review.{project.GetBranch(name).remote.review}.autocopy"
         raw_list = project.config.GetString(key)
         if raw_list is not None and len(people[0]) > 0:
             people[1].extend([entry.strip() for entry in raw_list.split(",")])
@@ -542,7 +536,7 @@ Gerrit Code Review:  https://www.gerritcodereview.com/
                     changes = [x for x in changes if x not in untracked]
 
                 if changes:
-                    key = "review.%s.autoupload" % branch.project.remote.review
+                    key = f"review.{branch.project.remote.review}.autoupload"
                     answer = branch.project.config.GetBoolean(key)
 
                     # If they want to auto upload, let's not ask because it
@@ -569,7 +563,7 @@ Gerrit Code Review:  https://www.gerritcodereview.com/
                 # Check if topic branches should be sent to the server during
                 # upload.
                 if opt.auto_topic is not True:
-                    key = "review.%s.uploadtopic" % branch.project.remote.review
+                    key = f"review.{branch.project.remote.review}.uploadtopic"
                     opt.auto_topic = branch.project.config.GetBoolean(key)
 
                 def _ExpandCommaList(value):
@@ -582,7 +576,7 @@ Gerrit Code Review:  https://www.gerritcodereview.com/
                             yield ret
 
                 # Check if hashtags should be included.
-                key = "review.%s.uploadhashtags" % branch.project.remote.review
+                key = f"review.{branch.project.remote.review}.uploadhashtags"
                 hashtags = set(
                     _ExpandCommaList(branch.project.config.GetString(key))
                 )
@@ -592,7 +586,7 @@ Gerrit Code Review:  https://www.gerritcodereview.com/
                     hashtags.add(branch.name)
 
                 # Check if labels should be included.
-                key = "review.%s.uploadlabels" % branch.project.remote.review
+                key = f"review.{branch.project.remote.review}.uploadlabels"
                 labels = set(
                     _ExpandCommaList(branch.project.config.GetString(key))
                 )
@@ -603,9 +597,7 @@ Gerrit Code Review:  https://www.gerritcodereview.com/
                 if opt.notify is False:
                     notify = "NONE"
                 else:
-                    key = (
-                        "review.%s.uploadnotify" % branch.project.remote.review
-                    )
+                    key = f"review.{branch.project.remote.review}.uploadnotify"
                     notify = branch.project.config.GetString(key)
 
                 destination = opt.dest_branch or branch.project.dest_branch
@@ -667,17 +659,18 @@ Gerrit Code Review:  https://www.gerritcodereview.com/
         if have_errors:
             for branch in todo:
                 if not branch.uploaded:
-                    if len(str(branch.error)) <= 30:
-                        fmt = " (%s)"
-                    else:
-                        fmt = "\n       (%s)"
+                    fmt = " (%s)" if len(str(branch.error)) <= 30 else "\n       (%s)"
                     print(
-                        ("[FAILED] %-15s %-15s" + fmt)
-                        % (
-                            branch.project.RelPath(local=opt.this_manifest_only)
-                            + "/",
-                            branch.name,
-                            str(branch.error),
+                        (
+                            f"[FAILED] %-15s %-15s{fmt}"
+                            % (
+                                branch.project.RelPath(
+                                    local=opt.this_manifest_only
+                                )
+                                + "/",
+                                branch.name,
+                                str(branch.error),
+                            )
                         ),
                         file=sys.stderr,
                     )
@@ -710,13 +703,12 @@ Gerrit Code Review:  https://www.gerritcodereview.com/
             local_branch = p.stdout.strip()
         p = GitCommand(
             project,
-            ["config", "--get", "branch.%s.merge" % local_branch],
+            ["config", "--get", f"branch.{local_branch}.merge"],
             capture_stdout=True,
             capture_stderr=True,
         )
         p.Wait()
-        merge_branch = p.stdout.strip()
-        return merge_branch
+        return p.stdout.strip()
 
     @staticmethod
     def _GatherOne(opt, project):
@@ -768,8 +760,7 @@ Gerrit Code Review:  https://www.gerritcodereview.com/
                 )
             else:
                 print(
-                    'repo: error: no branches named "%s" ready for upload'
-                    % (opt.branch,),
+                    f'repo: error: no branches named "{opt.branch}" ready for upload',
                     file=sys.stderr,
                 )
             return 1

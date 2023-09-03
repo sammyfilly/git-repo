@@ -149,15 +149,14 @@ def _ClearOldTraces():
         return
 
     while sum(len(x) for x in trace_lines) / (1024 * 1024) > _MAX_SIZE:
-        for i, line in enumerate(trace_lines):
-            if "END:" in line and _NEW_COMMAND_SEP in line:
-                trace_lines = trace_lines[i + 1 :]
-                break
-        else:
-            # The last chunk is bigger than _MAX_SIZE, so just throw everything
-            # away.
-            trace_lines = []
-
+        trace_lines = next(
+            (
+                trace_lines[i + 1 :]
+                for i, line in enumerate(trace_lines)
+                if "END:" in line and _NEW_COMMAND_SEP in line
+            ),
+            [],
+        )
     while trace_lines and trace_lines[-1] == "\n":
         trace_lines = trace_lines[:-1]
     # Write to a temporary file with a unique name in the same filesystem

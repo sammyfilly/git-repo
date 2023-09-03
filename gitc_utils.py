@@ -70,17 +70,13 @@ def _set_project_revisions(projects):
         for i, rc, revisionExpr in results_iter:
             project = projects[i]
             if rc:
-                print(
-                    "FATAL: Failed to retrieve revisionExpr for %s"
-                    % project.name
-                )
+                print(f"FATAL: Failed to retrieve revisionExpr for {project.name}")
                 pool.terminate()
                 sys.exit(1)
             if not revisionExpr:
                 pool.terminate()
                 raise ManifestParseError(
-                    "Invalid SHA-1 revision project %s (%s)"
-                    % (project.remote.url, project.revisionExpr)
+                    f"Invalid SHA-1 revision project {project.remote.url} ({project.revisionExpr})"
                 )
             project.revisionExpr = revisionExpr
 

@@ -49,11 +49,9 @@ It is equivalent to "git branch -D <branchname>".
 
         if not opt.all:
             branches = args[0].split()
-            invalid_branches = [
+            if invalid_branches := [
                 x for x in branches if not git.check_ref_format(f"heads/{x}")
-            ]
-
-            if invalid_branches:
+            ]:
                 self.OptionParser.error(
                     f"{invalid_branches} are not valid branch names"
                 )
@@ -62,11 +60,7 @@ It is equivalent to "git branch -D <branchname>".
 
     def _ExecuteOne(self, all_branches, nb, project):
         """Abandon one project."""
-        if all_branches:
-            branches = project.GetBranches()
-        else:
-            branches = nb
-
+        branches = project.GetBranches() if all_branches else nb
         ret = {}
         for name in branches:
             status = project.AbandonBranch(name)
@@ -97,9 +91,7 @@ It is equivalent to "git branch -D <branchname>".
             functools.partial(self._ExecuteOne, opt.all, nb),
             all_projects,
             callback=_ProcessResults,
-            output=Progress(
-                "Abandon %s" % (nb,), len(all_projects), quiet=opt.quiet
-            ),
+            output=Progress(f"Abandon {nb}", len(all_projects), quiet=opt.quiet),
         )
 
         width = max(
@@ -108,27 +100,21 @@ It is equivalent to "git branch -D <branchname>".
             )
         )
         if err:
-            for br in err.keys():
-                err_msg = "error: cannot abandon %s" % br
+            for br in err:
+                err_msg = f"error: cannot abandon {br}"
                 print(err_msg, file=sys.stderr)
                 for proj in err[br]:
-                    print(
-                        " " * len(err_msg) + " | %s" % _RelPath(proj),
-                        file=sys.stderr,
-                    )
+                    print(" " * len(err_msg) + f" | {_RelPath(proj)}", file=sys.stderr)
             sys.exit(1)
         elif not success:
-            print(
-                "error: no project has local branch(es) : %s" % nb,
-                file=sys.stderr,
-            )
+            print(f"error: no project has local branch(es) : {nb}", file=sys.stderr)
             sys.exit(1)
         else:
             # Everything below here is displaying status.
             if opt.quiet:
                 return
             print("Abandoned branches:")
-            for br in success.keys():
+            for br in success:
                 if len(all_projects) > 1 and len(all_projects) == len(
                     success[br]
                 ):

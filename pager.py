@@ -29,7 +29,7 @@ def RunPager(globalConfig):
     if not os.isatty(0) or not os.isatty(1):
         return
     pager = _SelectPager(globalConfig)
-    if pager == "" or pager == "cat":
+    if pager in ["", "cat"]:
         return
 
     if platform_utils.isWindows():
@@ -90,7 +90,7 @@ def _ForkPager(pager):
 
         _BecomePager(pager)
     except Exception:
-        print("fatal: cannot start pager '%s'" % pager, file=sys.stderr)
+        print(f"fatal: cannot start pager '{pager}'", file=sys.stderr)
         sys.exit(255)
 
 
@@ -100,8 +100,7 @@ def _SelectPager(globalConfig):
     except KeyError:
         pass
 
-    pager = globalConfig.GetString("core.pager")
-    if pager:
+    if pager := globalConfig.GetString("core.pager"):
         return pager
 
     try:

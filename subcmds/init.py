@@ -155,9 +155,7 @@ to update the working directory files.
     def _Prompt(self, prompt, value):
         print("%-10s [%s]: " % (prompt, value), end="", flush=True)
         a = sys.stdin.readline().strip()
-        if a == "":
-            return value
-        return a
+        return value if a == "" else a
 
     def _ShouldConfigureUser(self, opt, existing_checkout):
         gc = self.client.globalConfig
@@ -174,11 +172,7 @@ to update the working directory files.
         if not opt.quiet and not existing_checkout or opt.verbose:
             print()
             print(
-                "Your identity is: %s <%s>"
-                % (
-                    mp.config.GetString("user.name"),
-                    mp.config.GetString("user.email"),
-                )
+                f'Your identity is: {mp.config.GetString("user.name")} <{mp.config.GetString("user.email")}>'
             )
             print(
                 "If you want to change this, please re-run 'repo init' with "
@@ -197,7 +191,7 @@ to update the working directory files.
 
             if not opt.quiet:
                 print()
-            print("Your identity is: %s <%s>" % (name, email))
+            print(f"Your identity is: {name} <{email}>")
             print("is this correct [y/N]? ", end="", flush=True)
             a = sys.stdin.readline().strip().lower()
             if a in ("yes", "y", "t", "true"):
@@ -209,10 +203,7 @@ to update the working directory files.
             mp.config.SetString("user.email", email)
 
     def _HasColorSet(self, gc):
-        for n in ["ui", "diff", "status"]:
-            if gc.Has("color.%s" % n):
-                return True
-        return False
+        return any(gc.Has(f"color.{n}") for n in ["ui", "diff", "status"])
 
     def _ConfigureColor(self):
         gc = self.client.globalConfig
@@ -233,7 +224,7 @@ to update the working directory files.
             out.write(" ")
             out.printer(fg=c)(" %-6s ", c)
         out.write(" ")
-        out.printer(fg="white", bg="black")(" %s " % "white")
+        out.printer(fg="white", bg="black")(' white ')
         out.nl()
 
         for c in ["bold", "dim", "ul", "reverse"]:
@@ -251,16 +242,9 @@ to update the working directory files.
             gc.SetString("color.ui", "auto")
 
     def _DisplayResult(self):
-        if self.manifest.IsMirror:
-            init_type = "mirror "
-        else:
-            init_type = ""
-
+        init_type = "mirror " if self.manifest.IsMirror else ""
         print()
-        print(
-            "repo %shas been initialized in %s"
-            % (init_type, self.manifest.topdir)
-        )
+        print(f"repo {init_type}has been initialized in {self.manifest.topdir}")
 
         current_dir = os.getcwd()
         if current_dir != self.manifest.topdir:
@@ -268,7 +252,7 @@ to update the working directory files.
                 "If this is not the directory in which you want to initialize "
                 "repo, please run:"
             )
-            print("   rm -r %s" % os.path.join(self.manifest.topdir, ".repo"))
+            print(f'   rm -r {os.path.join(self.manifest.topdir, ".repo")}')
             print("and try again.")
 
     def ValidateOptions(self, opt, args):
@@ -309,8 +293,8 @@ to update the working directory files.
 
             opt.manifest_url = args.pop(0)
 
-            if args:
-                self.OptionParser.error("too many arguments to init")
+        if args:
+            self.OptionParser.error("too many arguments to init")
 
     def Execute(self, opt, args):
         git_require(MIN_GIT_VERSION_HARD, fail=True)

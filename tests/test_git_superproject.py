@@ -113,8 +113,7 @@ class SuperprojectTestCase(unittest.TestCase):
         """Helper function to read log data into a list."""
         log_data = []
         with open(log_path, mode="rb") as f:
-            for line in f:
-                log_data.append(json.loads(line))
+            log_data.extend(json.loads(line) for line in f)
         return log_data
 
     def verifyErrorEvent(self):
@@ -262,18 +261,18 @@ class SuperprojectTestCase(unittest.TestCase):
     def test_superproject_update_project_revision_id(self):
         """Test with LsTree being a mock."""
         self.assertEqual(len(self._superproject._manifest.projects), 1)
-        projects = self._superproject._manifest.projects
         data = (
             "160000 commit 2c2724cb36cd5a9cec6c852c681efc3b7c6b86ea\tart\x00"
             "160000 commit e9d25da64d8d365dbba7c8ee00fe8c4473fe9a06\tbootable/recovery\x00"
         )
+        projects = self._superproject._manifest.projects
         with mock.patch.object(self._superproject, "_Init", return_value=True):
             with mock.patch.object(
-                self._superproject, "_Fetch", return_value=True
-            ):
+                        self._superproject, "_Fetch", return_value=True
+                    ):
                 with mock.patch.object(
-                    self._superproject, "_LsTree", return_value=data
-                ):
+                                self._superproject, "_LsTree", return_value=data
+                            ):
                     # Create temporary directory so that it can write the file.
                     os.mkdir(self._superproject._superproject_path)
                     update_result = self._superproject.UpdateProjectsRevisionId(
@@ -285,16 +284,7 @@ class SuperprojectTestCase(unittest.TestCase):
                         manifest_xml_data = fp.read()
                     self.assertEqual(
                         sort_attributes(manifest_xml_data),
-                        '<?xml version="1.0" ?><manifest>'
-                        '<remote fetch="http://localhost" name="default-remote"/>'
-                        '<default remote="default-remote" revision="refs/heads/main"/>'
-                        '<project groups="notdefault,platform-'
-                        + self.platform
-                        + '" '
-                        'name="platform/art" path="art" '
-                        'revision="2c2724cb36cd5a9cec6c852c681efc3b7c6b86ea" upstream="refs/heads/main"/>'
-                        '<superproject name="superproject"/>'
-                        "</manifest>",
+                        f'<?xml version="1.0" ?><manifest><remote fetch="http://localhost" name="default-remote"/><default remote="default-remote" revision="refs/heads/main"/><project groups="notdefault,platform-{self.platform}" name="platform/art" path="art" revision="2c2724cb36cd5a9cec6c852c681efc3b7c6b86ea" upstream="refs/heads/main"/><superproject name="superproject"/></manifest>',
                     )
 
     def test_superproject_update_project_revision_id_no_superproject_tag(self):
@@ -323,7 +313,7 @@ class SuperprojectTestCase(unittest.TestCase):
         self,
     ):
         """Test update of commit ids of a manifest that have local manifest no superproject group."""
-        local_group = manifest_xml.LOCAL_MANIFEST_GROUP_PREFIX + ":local"
+        local_group = f"{manifest_xml.LOCAL_MANIFEST_GROUP_PREFIX}:local"
         manifest = self.getXmlManifest(
             """
 <manifest>
@@ -352,15 +342,15 @@ class SuperprojectTestCase(unittest.TestCase):
             revision="refs/heads/main",
         )
         self.assertEqual(len(self._superproject._manifest.projects), 2)
-        projects = self._superproject._manifest.projects
         data = "160000 commit 2c2724cb36cd5a9cec6c852c681efc3b7c6b86ea\tart\x00"
+        projects = self._superproject._manifest.projects
         with mock.patch.object(self._superproject, "_Init", return_value=True):
             with mock.patch.object(
-                self._superproject, "_Fetch", return_value=True
-            ):
+                        self._superproject, "_Fetch", return_value=True
+                    ):
                 with mock.patch.object(
-                    self._superproject, "_LsTree", return_value=data
-                ):
+                                self._superproject, "_LsTree", return_value=data
+                            ):
                     # Create temporary directory so that it can write the file.
                     os.mkdir(self._superproject._superproject_path)
                     update_result = self._superproject.UpdateProjectsRevisionId(
@@ -374,17 +364,7 @@ class SuperprojectTestCase(unittest.TestCase):
                     # changed.
                     self.assertEqual(
                         sort_attributes(manifest_xml_data),
-                        '<?xml version="1.0" ?><manifest>'
-                        '<remote fetch="http://localhost" name="default-remote"/>'
-                        '<remote fetch="http://localhost2" name="goog"/>'
-                        '<default remote="default-remote" revision="refs/heads/main"/>'
-                        '<project groups="notdefault,platform-'
-                        + self.platform
-                        + '" '
-                        'name="platform/art" path="art" '
-                        'revision="2c2724cb36cd5a9cec6c852c681efc3b7c6b86ea" upstream="refs/heads/main"/>'
-                        '<superproject name="superproject"/>'
-                        "</manifest>",
+                        f'<?xml version="1.0" ?><manifest><remote fetch="http://localhost" name="default-remote"/><remote fetch="http://localhost2" name="goog"/><default remote="default-remote" revision="refs/heads/main"/><project groups="notdefault,platform-{self.platform}" name="platform/art" path="art" revision="2c2724cb36cd5a9cec6c852c681efc3b7c6b86ea" upstream="refs/heads/main"/><superproject name="superproject"/></manifest>',
                     )
 
     def test_superproject_update_project_revision_id_with_pinned_manifest(self):
@@ -414,18 +394,18 @@ class SuperprojectTestCase(unittest.TestCase):
             revision="refs/heads/main",
         )
         self.assertEqual(len(self._superproject._manifest.projects), 3)
-        projects = self._superproject._manifest.projects
         data = (
             "160000 commit 2c2724cb36cd5a9cec6c852c681efc3b7c6b86ea\tart\x00"
             "160000 commit e9d25da64d8d365dbba7c8ee00fe8c4473fe9a06\tvendor/x\x00"
         )
+        projects = self._superproject._manifest.projects
         with mock.patch.object(self._superproject, "_Init", return_value=True):
             with mock.patch.object(
-                self._superproject, "_Fetch", return_value=True
-            ):
+                        self._superproject, "_Fetch", return_value=True
+                    ):
                 with mock.patch.object(
-                    self._superproject, "_LsTree", return_value=data
-                ):
+                                self._superproject, "_LsTree", return_value=data
+                            ):
                     # Create temporary directory so that it can write the file.
                     os.mkdir(self._superproject._superproject_path)
                     update_result = self._superproject.UpdateProjectsRevisionId(
@@ -439,20 +419,7 @@ class SuperprojectTestCase(unittest.TestCase):
                     # changed.
                     self.assertEqual(
                         sort_attributes(manifest_xml_data),
-                        '<?xml version="1.0" ?><manifest>'
-                        '<remote fetch="http://localhost" name="default-remote"/>'
-                        '<default remote="default-remote" revision="refs/heads/main"/>'
-                        '<project groups="notdefault,platform-'
-                        + self.platform
-                        + '" '
-                        'name="platform/art" path="art" '
-                        'revision="2c2724cb36cd5a9cec6c852c681efc3b7c6b86ea" upstream="refs/heads/main"/>'
-                        '<project name="platform/vendor/x" path="vendor/x" '
-                        'revision="e9d25da64d8d365dbba7c8ee00fe8c4473fe9a06" upstream="refs/heads/main"/>'
-                        '<project name="platform/vendor/y" path="vendor/y" '
-                        'revision="52d3c9f7c107839ece2319d077de0cd922aa9d8f"/>'
-                        '<superproject name="superproject"/>'
-                        "</manifest>",
+                        f'<?xml version="1.0" ?><manifest><remote fetch="http://localhost" name="default-remote"/><default remote="default-remote" revision="refs/heads/main"/><project groups="notdefault,platform-{self.platform}" name="platform/art" path="art" revision="2c2724cb36cd5a9cec6c852c681efc3b7c6b86ea" upstream="refs/heads/main"/><project name="platform/vendor/x" path="vendor/x" revision="e9d25da64d8d365dbba7c8ee00fe8c4473fe9a06" upstream="refs/heads/main"/><project name="platform/vendor/y" path="vendor/y" revision="52d3c9f7c107839ece2319d077de0cd922aa9d8f"/><superproject name="superproject"/></manifest>',
                     )
 
     def test_Fetch(self):

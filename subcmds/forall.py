@@ -206,10 +206,7 @@ without iterating through the remaining projects.
         cmd = [opt.command[0]]
         all_trees = not opt.this_manifest_only
 
-        shell = True
-        if re.compile(r"^[a-z0-9A-Z_/\.-]+$").match(cmd[0]):
-            shell = False
-
+        shell = not re.compile(r"^[a-z0-9A-Z_/\.-]+$").match(cmd[0])
         if shell:
             cmd.append(cmd[0])
         cmd.extend(opt.command[1:])
@@ -295,8 +292,7 @@ without iterating through the remaining projects.
         except Exception as e:
             # Catch any other exceptions raised
             print(
-                "forall: unhandled error, terminating the pool: %s: %s"
-                % (type(e).__name__, e),
+                f"forall: unhandled error, terminating the pool: {type(e).__name__}: {e}",
                 file=sys.stderr,
             )
             rc = rc or getattr(e, "errno", 1)
@@ -324,7 +320,7 @@ def DoWorkWrapper(mirror, opt, cmd, shell, config, args):
     try:
         return DoWork(project, mirror, opt, cmd, shell, cnt, config)
     except KeyboardInterrupt:
-        print("%s: Worker interrupted" % project.name)
+        print(f"{project.name}: Worker interrupted")
         raise WorkerKeyboardInterrupt()
 
 
@@ -354,7 +350,7 @@ def DoWork(project, mirror, opt, cmd, shell, cnt, config):
     setenv("REPO_DEST_BRANCH", project.dest_branch)
     setenv("REPO_I", str(cnt + 1))
     for annotation in project.annotations:
-        setenv("REPO__%s" % (annotation.name), annotation.value)
+        setenv(f"REPO__{annotation.name}", annotation.value)
 
     if mirror:
         setenv("GIT_DIR", project.gitdir)
@@ -375,11 +371,7 @@ def DoWork(project, mirror, opt, cmd, shell, cnt, config):
             )
         return (1, output)
 
-    if opt.verbose:
-        stderr = subprocess.STDOUT
-    else:
-        stderr = subprocess.DEVNULL
-
+    stderr = subprocess.STDOUT if opt.verbose else subprocess.DEVNULL
     stdin = None if opt.interactive else subprocess.DEVNULL
 
     result = subprocess.run(
@@ -407,7 +399,7 @@ def DoWork(project, mirror, opt, cmd, shell, cnt, config):
                 project_header_path = project.RelPath(
                     local=opt.this_manifest_only
                 )
-            out.project("project %s/" % project_header_path)
+            out.project(f"project {project_header_path}/")
             out.nl()
             buf.write(output)
             output = buf.getvalue()

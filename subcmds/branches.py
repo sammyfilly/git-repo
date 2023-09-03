@@ -50,7 +50,7 @@ class BranchInfo(object):
 
     @property
     def IsSplitCurrent(self):
-        return self.current != 0 and self.current != len(self.projects)
+        return self.current not in [0, len(self.projects)]
 
     @property
     def IsPublished(self):
@@ -173,20 +173,20 @@ is shown, then the branch appears in all projects.
                         if _RelPath(p) not in have:
                             paths.append(_RelPath(p))
 
-                s = " %s %s" % (in_type, ", ".join(paths))
+                s = f' {in_type} {", ".join(paths)}'
                 if not i.IsSplitCurrent and (width + 7 + len(s) < 80):
                     fmt = out.current if i.IsCurrent else fmt
                     fmt(s)
                 else:
-                    fmt(" %s:" % in_type)
+                    fmt(f" {in_type}:")
                     fmt = out.current if i.IsCurrent else out.write
                     for p in paths:
                         out.nl()
-                        fmt(width * " " + "          %s" % p)
+                        fmt(width * " " + f"          {p}")
                     fmt = out.write
                     for p in non_cur_paths:
                         out.nl()
-                        fmt(width * " " + "          %s" % p)
+                        fmt(width * " " + f"          {p}")
             else:
                 out.write(" in all projects")
             out.nl()
